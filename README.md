@@ -1,208 +1,319 @@
 # Qoder账号管理器
 
-一个自动化Qoder账号注册和管理的Node.js工具。
+自动化Qoder账号注册和管理工具，采用现代化的Tauri + Node.js架构。
 
-## 功能特性
+## 项目架构
 
-- 🤖 **自动注册**: 使用域名邮箱自动注册Qoder账号
-- 📧 **邮件验证**: 自动处理邮件验证流程
-- 🔐 **安全存储**: 使用AES-256加密安全存储账号凭据
-- 📊 **批量处理**: 支持批量注册多个账号
-- 🛡️ **反机器人**: 智能处理验证码和反机器人措施
-- 📝 **详细日志**: 提供全面的操作日志和错误报告
-- ⚙️ **灵活配置**: 支持多种配置选项和自定义设置
-- 🖥️ **桌面应用**: 提供Electron桌面GUI界面
-- 💻 **命令行**: 支持命令行模式操作
-
-## 系统要求
-
-- Node.js >= 18.0.0
-- npm >= 8.0.0
-
-## 安装和快速开始
-
-```bash
-# 克隆项目
-git clone <repository-url>
-cd qoder-account-manager
-
-# 完整设置（推荐）
-make setup
-
-# 或者分步安装
-make install          # 安装依赖
-npx playwright install # 安装浏览器
-```
-
-### 启动应用
-
-#### 桌面应用模式（推荐）
-```bash
-make electron         # 启动Electron桌面应用
-make electron-dev     # 开发模式
-```
-
-#### 命令行模式
-```bash
-make start            # 启动命令行应用
-make dev              # 开发模式（自动重启）
-```
-
-#### 查看所有命令
-```bash
-make help
-```
-
-### 使用Makefile
-
-项目提供了便捷的Makefile命令：
-
-```bash
-# 应用启动
-make electron         # 启动桌面应用
-make electron-dev     # 桌面应用开发模式
-make start            # 启动命令行应用
-make dev              # 命令行开发模式
-
-# 构建和部署
-make electron-build   # 构建桌面应用
-make build            # 构建项目
-
-# 开发相关
-make test             # 运行测试
-make lint             # 代码检查
-
-# 项目管理
-make status           # 查看项目状态
-make clean            # 清理临时文件
-make backup           # 备份数据
-make logs             # 查看日志
-
-# 查看完整命令列表
-make help
-```
-
-### 传统npm命令
-
-```bash
-# 桌面应用
-npm run electron      # 启动Electron桌面应用
-npm run electron-dev  # Electron开发模式
-npm run build         # 构建Electron应用
-
-# 命令行应用
-npm start             # 启动命令行应用
-npm run dev           # 开发模式（自动重启）
-
-# 测试和检查
-npm test              # 运行测试
-npm run lint          # 代码检查
-```
-
-## 项目结构
+本项目采用monorepo架构，包含以下应用：
 
 ```
 qoder-account-manager/
-├── src/                    # 源代码
-│   ├── core/              # 核心类型和接口
-│   │   ├── types.js       # 数据类型定义
-│   │   ├── interfaces.js  # 接口定义
-│   │   ├── database.js    # 数据库管理
-│   │   ├── credential-store.js # 凭据存储
-│   │   ├── email-processor.js # 邮件处理
-│   │   └── email-verification-manager.js # 邮件验证管理
-│   ├── electron/          # Electron桌面应用
-│   │   ├── main.js        # 主进程
-│   │   ├── preload.js     # 预加载脚本
-│   │   └── web-server.js  # Web服务器
-│   ├── web/               # Web界面
-│   │   └── public/        # 静态资源
-│   │       ├── index.html # 主页面
-│   │       ├── styles/    # 样式文件
-│   │       └── js/        # JavaScript文件
-│   ├── utils/             # 工具函数
-│   │   ├── crypto.js      # 加密工具
-│   │   ├── retry.js       # 重试工具
-│   │   ├── logger.js      # 日志工具
-│   │   └── email-providers.js # 邮件提供商配置
-│   ├── cli/               # 命令行界面（待实现）
-│   └── index.js           # 主入口文件
-├── test/                  # 测试文件
-│   ├── unit/             # 单元测试
-│   └── integration/      # 集成测试
-├── config/               # 配置文件
-├── data/                 # 数据文件
-├── logs/                 # 日志文件
-├── docs/                 # 文档
-└── .kiro/               # Kiro规范文件
-    └── specs/
-        └── qoder-account-manager/
-            ├── requirements.md  # 需求文档
-            ├── design.md       # 设计文档
-            └── tasks.md        # 任务列表
+├── apps/
+│   ├── desktop/                 # Tauri桌面应用
+│   │   ├── src/                # 前端源码 (HTML/CSS/JS)
+│   │   ├── src-tauri/          # Rust后端源码
+│   │   └── package.json        # 桌面应用依赖
+│   └── node-core/              # Node.js核心模块
+│       ├── src/                # Node.js源码
+│       │   ├── core/           # 核心模块
+│       │   ├── email/          # 邮件处理
+│       │   ├── browser/        # 浏览器自动化
+│       │   ├── account/        # 账号管理
+│       │   ├── task/           # 任务管理
+│       │   ├── ipc/            # IPC通信
+│       │   └── utils/          # 工具函数
+│       └── package.json        # Node.js核心依赖
+├── data/                       # 数据存储
+├── logs/                       # 日志文件
+├── config/                     # 配置文件
+├── backups/                    # 备份文件
+└── package.json               # 根目录配置
 ```
 
-## 开发状态
+## 技术栈
 
-当前项目处于开发阶段，已完成的功能：
+### 桌面应用 (apps/desktop)
+- **前端**: HTML5 + CSS3 + JavaScript (ES6+)
+- **后端**: Rust + Tauri
+- **UI框架**: 原生Web技术
+- **通信**: Tauri Commands API
 
-- ✅ 项目架构搭建
-- ✅ 核心类型和接口定义
-- ✅ 工具函数（加密、重试、日志）
-- ✅ 凭据存储系统
-- ✅ SQLite数据库管理
-- ✅ AES-256-GCM加密存储
-- ✅ 邮件处理系统
-- ✅ IMAP邮件检索和解析
-- ✅ 验证链接提取和自动化
-- ✅ 邮件提供商配置管理
-- ✅ Electron桌面GUI应用
-- ✅ Web界面和前端交互
-- ✅ Makefile项目管理
-- ⏳ 浏览器自动化（下一个任务）
-- ⏳ 账号管理器核心逻辑
-- ⏳ 命令行界面
+### Node.js核心 (apps/node-core)
+- **运行时**: Node.js 18+
+- **浏览器自动化**: Playwright
+- **邮件处理**: IMAP + Mailparser
+- **数据库**: SQLite3
+- **加密**: Node.js Crypto (AES-256-GCM)
 
-## 配置
+## 功能特性
 
-应用支持多种配置方式：
+### ✅ 已实现功能
 
-1. **环境变量**
-2. **配置文件** (config/default.json)
-3. **命令行参数**
+1. **核心架构**
+   - 数据库管理 (SQLite)
+   - 凭据存储 (AES-256-GCM加密)
+   - 日志系统
+   - 重试机制
 
-详细配置说明请参考 [配置文档](docs/configuration.md)（待创建）。
+2. **邮件处理**
+   - IMAP邮件检索
+   - 验证邮件识别
+   - 验证链接提取
+   - 邮件验证自动化
 
-## 安全性
+3. **桌面界面**
+   - Tauri桌面应用框架
+   - 现代化UI界面
+   - 配置管理界面
+   - 邮箱配置向导
 
-- 使用AES-256-GCM加密存储密码
-- 支持PBKDF2密钥派生
-- 自动生成强密码
-- 安全的随机数生成
-- 完整的审计日志
+### 🚧 开发中功能
 
-## 贡献
+4. **浏览器自动化**
+   - Playwright浏览器控制
+   - 注册表单自动填写
+   - 验证码处理
+   - 反机器人措施
 
-欢迎贡献代码！请遵循以下步骤：
+5. **账号管理**
+   - 单个账号注册
+   - 批量账号注册
+   - 账号状态监控
+   - 注册进度跟踪
 
-1. Fork项目
-2. 创建功能分支 (`git checkout -b feature/amazing-feature`)
-3. 提交更改 (`git commit -m 'Add some amazing feature'`)
-4. 推送到分支 (`git push origin feature/amazing-feature`)
-5. 创建Pull Request
+6. **任务系统**
+   - 任务队列管理
+   - 并发控制
+   - 任务调度
+   - 进度报告
+
+## 快速开始
+
+### 环境要求
+
+- Node.js 18.0+
+- Rust 1.70+
+- npm 9.0+
+
+### 安装依赖
+
+```bash
+# 安装所有依赖
+make install
+
+# 或者手动安装
+npm run install:all
+```
+
+### 完整设置
+
+```bash
+# 完整项目设置（推荐）
+make setup
+```
+
+这将自动：
+- 安装所有依赖
+- 设置Playwright浏览器
+- 创建必要目录
+- 配置Tauri环境
+
+### 开发模式
+
+```bash
+# 启动桌面应用开发模式
+make dev
+
+# 启动Node.js核心开发模式
+make dev-core
+
+# 同时启动两个应用
+make dev & make dev-core
+```
+
+### 生产运行
+
+```bash
+# 启动桌面应用
+make start
+
+# 启动Node.js核心
+make start-core
+```
+
+## 开发指南
+
+### 项目结构说明
+
+#### apps/desktop - 桌面应用
+- `src/`: 前端源码 (HTML/CSS/JS)
+- `src-tauri/`: Rust后端源码
+- 负责用户界面和系统集成
+
+#### apps/node-core - Node.js核心
+- `src/core/`: 核心模块 (数据库、凭据存储等)
+- `src/email/`: 邮件处理模块
+- `src/browser/`: 浏览器自动化模块
+- `src/account/`: 账号管理模块
+- `src/task/`: 任务管理模块
+- `src/utils/`: 工具函数
+
+### 开发工作流
+
+1. **功能开发**
+   ```bash
+   # 创建功能分支
+   git checkout -b feature/new-feature
+   
+   # 开发和测试
+   make dev
+   make test
+   
+   # 代码检查
+   make lint
+   ```
+
+2. **测试**
+   ```bash
+   # 运行所有测试
+   make test
+   
+   # 运行特定模块测试
+   make test-core
+   ```
+
+3. **构建**
+   ```bash
+   # 构建所有应用
+   make build
+   
+   # 构建桌面应用
+   make build-desktop
+   ```
+
+### 配置管理
+
+#### 邮箱配置
+支持主流邮件提供商的自动配置：
+- Gmail
+- Outlook/Hotmail
+- QQ邮箱
+- 163邮箱
+- 126邮箱
+- Yahoo Mail
+
+#### 数据库配置
+- 默认使用SQLite数据库
+- 数据文件位置: `data/qoder-accounts.db`
+- 支持自动备份和恢复
+
+#### 日志配置
+- 日志文件位置: `logs/`
+- 支持日志轮转和清理
+- 可配置日志级别
+
+## 使用说明
+
+### 基本使用流程
+
+1. **配置邮箱**
+   - 启动桌面应用
+   - 进入邮箱配置页面
+   - 添加用于接收验证邮件的邮箱
+
+2. **配置域名**
+   - 添加要注册的邮箱域名
+   - 配置域名相关设置
+
+3. **开始注册**
+   - 选择注册模式（单个/批量）
+   - 设置注册参数
+   - 启动注册任务
+
+4. **监控进度**
+   - 查看注册进度
+   - 监控任务状态
+   - 处理异常情况
+
+### 高级功能
+
+#### 批量注册
+- 支持并发注册多个账号
+- 可配置注册间隔和重试策略
+- 提供详细的进度报告
+
+#### 数据管理
+```bash
+# 备份数据
+make backup
+
+# 恢复数据
+make restore FILE=backups/backup-xxx.tar.gz
+```
+
+#### 日志管理
+```bash
+# 查看实时日志
+make logs
+
+# 清理旧日志
+make logs-clean
+```
+
+## 故障排除
+
+### 常见问题
+
+1. **邮箱连接失败**
+   - 检查IMAP设置是否正确
+   - 确认是否需要应用专用密码
+   - 验证网络连接
+
+2. **浏览器启动失败**
+   - 运行 `make setup` 重新安装浏览器
+   - 检查系统权限设置
+
+3. **数据库错误**
+   - 检查数据目录权限
+   - 尝试重新初始化数据库
+
+### 获取帮助
+
+```bash
+# 查看所有可用命令
+make help
+
+# 查看项目状态
+make status
+
+# 查看系统信息
+make info
+```
+
+## 贡献指南
+
+1. Fork 项目
+2. 创建功能分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 打开 Pull Request
 
 ## 许可证
 
-本项目采用MIT许可证 - 详见 [LICENSE](LICENSE) 文件。
-
-## 支持
-
-如果您遇到问题或有建议，请：
-
-1. 查看 [常见问题](docs/faq.md)（待创建）
-2. 搜索现有的 [Issues](../../issues)
-3. 创建新的 Issue
+本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
 
 ## 更新日志
 
-详见 [CHANGELOG.md](CHANGELOG.md)（待创建）。
+### v1.0.0 (当前版本)
+- ✅ 完成核心架构设计
+- ✅ 实现数据库和凭据存储
+- ✅ 实现邮件处理系统
+- ✅ 完成Tauri桌面应用框架
+- 🚧 开发浏览器自动化功能
+- 🚧 开发账号管理功能
+
+## 支持
+
+如果您觉得这个项目有用，请给它一个 ⭐️！
+
+如有问题或建议，请创建 [Issue](https://github.com/your-repo/qoder-account-manager/issues)。

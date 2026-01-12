@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qoder账号管理器</title>
+    <link rel="stylesheet" href="/src/styles/main.css">
+</head>
+<body>
+    <div id="app">
+        <header class="app-header">
+            <h1>Qoder账号管理器</h1>
+        </header>
+        
+        <nav class="sidebar">
+            <ul class="nav-menu">
+                <li><a href="#" class="nav-item active" data-page="dashboard">仪表板</a></li>
+                <li><a href="#" class="nav-item" data-page="accounts">账号管理</a></li>
+                <li><a href="#" class="nav-item" data-page="email-config">邮箱配置</a></li>
+                <li><a href="#" class="nav-item" data-page="logs">日志管理</a></li>
+                <li><a href="#" class="nav-item" data-page="settings">系统设置</a></li>
+            </ul>
+        </nav>
+        
+        <main class="main-content">
+            <div id="dashboard-page" class="page active">
+                <h2>系统概览</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>总账号数</h3>
+                        <span id="stat-total" class="stat-number">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <h3>活跃账号</h3>
+                        <span id="stat-active" class="stat-number">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <h3>今日注册</h3>
+                        <span id="stat-today" class="stat-number">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <h3>成功率</h3>
+                        <span id="stat-rate" class="stat-number">0%</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="accounts-page" class="page">
+                <h2>账号管理</h2>
+                <div class="page-actions">
+                    <button id="add-account-btn" class="btn btn-primary">添加账号</button>
+                </div>
+                <div id="accounts-list" class="data-list"></div>
+            </div>
+            
+            <div id="email-config-page" class="page">
+                <h2>邮箱配置</h2>
+                <p class="page-subtitle">管理邮箱域名和IMAP服务器配置</p>
+                
+                <div class="section-header">
+                    <h3>已配置的邮箱</h3>
+                    <button id="add-email-config-btn" class="btn btn-primary">+ 添加邮箱配置</button>
+                </div>
+                
+                <div id="email-config-list" class="email-config-grid">
+                    <!-- 邮箱配置卡片将在这里动态生成 -->
+                </div>
+            </div>
+            
+            <div id="logs-page" class="page">
+                <h2>日志管理</h2>
+                <div class="page-actions">
+                    <button id="clear-logs-btn" class="btn btn-secondary">清空日志</button>
+                </div>
+                <div id="logs-list" class="logs-container"></div>
+            </div>
+            
+            <div id="settings-page" class="page">
+                <h2>系统设置</h2>
+                <div class="settings-section">
+                    <h3>数据管理</h3>
+                    <p>清空所有数据将删除所有账号、域名配置和日志记录。</p>
+                    <button id="clear-data-btn" class="btn btn-danger">清空所有数据</button>
+                </div>
+                <div class="settings-section">
+                    <h3>关于</h3>
+                    <p>Qoder账号管理器 v1.0.0</p>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <div id="modal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modal-title">标题</h3>
+                <button id="modal-close" class="modal-close">&times;</button>
+            </div>
+            <div id="modal-body" class="modal-content"></div>
+            <div class="modal-footer">
+                <button id="modal-cancel" class="btn btn-secondary">取消</button>
+                <button id="modal-confirm" class="btn btn-primary">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="/src/js/app.js"></script>
+</body>
+</html>

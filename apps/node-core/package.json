@@ -1,0 +1,31 @@
+{
+  "name": "@qoder/node-core",
+  "version": "1.0.0",
+  "description": "Qoder账号管理器Node.js核心",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "build": "echo 'No build step needed for JS modules'",
+    "start": "node src/index.js",
+    "cli": "node src/index.js",
+    "test": "node --test test/**/*.test.js",
+    "test:watch": "node --test --watch test/**/*.test.js",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix"
+  },
+  "dependencies": {
+    "playwright": "^1.40.0",
+    "imap": "^0.8.19",
+    "mailparser": "^3.9.1",
+    "sqlite3": "^5.1.6",
+    "sqlite": "^5.1.1",
+    "cheerio": "^1.0.0-rc.12",
+    "chalk": "^5.3.0",
+    "fast-check": "^3.15.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "eslint": "^8.55.0"
+  }
+}
