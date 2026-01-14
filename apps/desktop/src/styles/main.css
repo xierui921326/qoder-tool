@@ -2062,3 +2062,745 @@ body {
 .modal {
     max-width: 720px;
 }
+
+
+/* ==================== 批量注册页面样式 ==================== */
+
+/* 注册配置区域 */
+.register-config-section {
+    margin-bottom: 20px;
+}
+
+.register-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+}
+
+@media (max-width: 768px) {
+    .register-form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* 邮箱输入区域 */
+.email-input-section {
+    margin-bottom: 20px;
+}
+
+.email-textarea {
+    width: 100%;
+    min-height: 150px;
+    padding: 16px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    resize: vertical;
+    transition: all 0.2s;
+}
+
+.email-textarea::placeholder {
+    color: var(--text-muted);
+}
+
+.email-textarea:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.email-input-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.email-count-badge {
+    background: var(--accent-gradient);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    margin-left: auto;
+}
+
+/* 配置卡片样式 */
+.config-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.config-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.config-card-icon {
+    font-size: 18px;
+}
+
+.config-card-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.config-card-body {
+    padding: 20px;
+}
+
+/* 操作按钮区域 */
+.register-actions {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.btn-lg {
+    padding: 14px 28px;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+/* 进度显示区域 */
+.progress-section {
+    margin-bottom: 20px;
+}
+
+.progress-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.progress-stat {
+    text-align: center;
+    padding: 16px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+}
+
+.progress-stat .stat-value {
+    display: block;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.progress-stat .stat-label {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.progress-bar-container {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.progress-bar-container .progress-bar {
+    flex: 1;
+    height: 12px;
+    background: var(--bg-secondary);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.progress-bar-container .progress-fill {
+    height: 100%;
+    background: var(--accent-gradient);
+    border-radius: 6px;
+    transition: width 0.3s ease;
+}
+
+.progress-percent {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--accent-primary);
+    min-width: 50px;
+}
+
+.current-task {
+    padding: 12px 16px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    font-size: 13px;
+}
+
+.current-task .task-label {
+    color: var(--text-muted);
+}
+
+.current-task .task-value {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+/* 结果列表 */
+.results-section {
+    margin-bottom: 20px;
+}
+
+.results-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.result-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+    transition: background 0.2s;
+}
+
+.result-item:last-child {
+    border-bottom: none;
+}
+
+.result-item:hover {
+    background: var(--bg-secondary);
+}
+
+.result-icon {
+    font-size: 18px;
+}
+
+.result-email {
+    flex: 1;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.result-status {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.result-status.success {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--success);
+}
+
+.result-status.failed {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--danger);
+}
+
+.result-status.pending {
+    background: rgba(245, 158, 11, 0.2);
+    color: var(--warning);
+}
+
+.result-status.processing {
+    background: rgba(59, 130, 246, 0.2);
+    color: var(--info);
+}
+
+.result-message {
+    font-size: 12px;
+    color: var(--text-muted);
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.result-time {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* 状态徽章扩展 */
+.status-badge.running {
+    background: rgba(59, 130, 246, 0.2);
+    color: var(--info);
+}
+
+.status-badge.paused {
+    background: rgba(245, 158, 11, 0.2);
+    color: var(--warning);
+}
+
+.status-badge.completed {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--success);
+}
+
+.status-badge.stopped {
+    background: rgba(107, 114, 128, 0.2);
+    color: var(--text-muted);
+}
+
+/* 生成邮箱模态框 */
+.generate-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+}
+
+.generate-preview {
+    margin-top: 16px;
+    padding: 12px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    font-family: monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    max-height: 100px;
+    overflow-y: auto;
+}
+
+/* 隐藏类 */
+.hidden {
+    display: none !important;
+}
+
+/* 表单选择框样式 */
+.form-select {
+    width: 100%;
+    padding: 12px 16px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 14px;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
+}
+
+.form-select:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.form-select option {
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+
+/* 空结果提示 */
+.empty-results {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+}
+
+.empty-results .empty-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+}
+
+
+/* ==================== 批量注册页面 - 重新设计 ==================== */
+.register-layout {
+    display: flex;
+    gap: 24px;
+    height: calc(100vh - 180px);
+    min-height: 450px;
+}
+
+.register-left {
+    flex: 0 0 380px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.register-right {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+}
+
+/* 配置卡片 */
+.register-config-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px;
+    flex: 1;
+}
+
+.config-card-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.config-group {
+    margin-bottom: 16px;
+}
+
+.config-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.config-group input,
+.config-group select {
+    width: 100%;
+    padding: 12px 14px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.config-group select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 40px;
+    cursor: pointer;
+}
+
+.config-group input:hover,
+.config-group select:hover {
+    border-color: var(--accent-primary);
+}
+
+.config-group input:focus,
+.config-group select:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.config-hint {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 6px;
+}
+
+/* 两列配置 */
+.config-row-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.config-row-2 .config-group {
+    margin-bottom: 0;
+}
+
+/* 预览区域 */
+.config-preview {
+    margin-top: 16px;
+    padding: 14px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    border: 1px dashed var(--border-color);
+}
+
+.preview-title {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+}
+
+.preview-list {
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 12px;
+    color: var(--text-primary);
+    line-height: 1.8;
+    max-height: 100px;
+    overflow-y: auto;
+}
+
+.preview-placeholder {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.preview-email {
+    display: block;
+    padding: 2px 0;
+}
+
+.preview-more {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* 操作按钮 */
+.register-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.register-actions .btn-lg {
+    flex: 1;
+    padding: 14px 20px;
+    font-size: 15px;
+}
+
+.register-actions .btn-secondary,
+.register-actions .btn-danger {
+    flex: 0 0 50px;
+    padding: 14px;
+}
+
+/* 进度卡片 */
+.progress-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.progress-stats {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 16px;
+}
+
+.stat-box {
+    text-align: center;
+    padding: 12px 20px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    min-width: 70px;
+}
+
+.stat-box .stat-num {
+    display: block;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1;
+}
+
+.stat-box .stat-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+.stat-box.stat-success .stat-num {
+    color: var(--success);
+}
+
+.stat-box.stat-danger .stat-num {
+    color: var(--danger);
+}
+
+/* 进度条 */
+.progress-bar-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.progress-bar-bg {
+    flex: 1;
+    height: 8px;
+    background: var(--bg-secondary);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: var(--accent-gradient);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+    width: 0%;
+}
+
+.progress-percent {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent-primary);
+    min-width: 45px;
+    text-align: right;
+}
+
+.current-task {
+    font-size: 13px;
+    color: var(--text-muted);
+    padding: 10px 12px;
+    background: var(--bg-secondary);
+    border-radius: 6px;
+}
+
+/* 结果卡片 */
+.results-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.results-list {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.empty-results {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+/* 结果项 */
+.result-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    font-size: 13px;
+}
+
+.result-item:last-child {
+    border-bottom: none;
+}
+
+.result-item:hover {
+    background: var(--bg-secondary);
+}
+
+.result-email {
+    flex: 1;
+    color: var(--text-primary);
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.result-status {
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.result-status.success {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--success);
+}
+
+.result-status.failed {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--danger);
+}
+
+.result-status.pending {
+    background: rgba(107, 114, 128, 0.2);
+    color: var(--text-muted);
+}
+
+.result-status.processing {
+    background: rgba(59, 130, 246, 0.2);
+    color: var(--info);
+}
+
+/* 状态徽章 */
+.status-badge-sm {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    background: rgba(107, 114, 128, 0.2);
+    color: var(--text-muted);
+}
+
+.status-badge-sm.running {
+    background: rgba(59, 130, 246, 0.2);
+    color: var(--info);
+}
+
+.status-badge-sm.paused {
+    background: rgba(245, 158, 11, 0.2);
+    color: var(--warning);
+}
+
+.status-badge-sm.completed {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--success);
+}
+
+.status-badge-sm.stopped {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--danger);
+}
+
+/* 链接按钮 */
+.btn-link {
+    background: none;
+    border: none;
+    color: var(--accent-primary);
+    font-size: 12px;
+    cursor: pointer;
+    padding: 4px 8px;
+    transition: opacity 0.2s;
+}
+
+.btn-link:hover {
+    opacity: 0.8;
+}
+

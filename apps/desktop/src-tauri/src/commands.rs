@@ -1,3 +1,4 @@
+// Tauri命令模块 - 使用SQLite持久化存储
 use crate::{Account, AppState, EmailConfig, LogEntry};
 use tauri::State;
 use uuid::Uuid;
@@ -14,15 +15,14 @@ pub struct DashboardStats {
 }
 
 #[tauri::command]
-pub async fn get_dashboard_stats(state: State<'_, AppState>) -> Result<DashboardStats, String> {
-    let accounts = state.accounts.lock().await;
-    let total = accounts.len();
-    let active = accounts.iter().filter(|a| a.status == "active").count();
+pub fn get_dashboard_stats(state: State<'_, AppState>) -> Result<DashboardStats, String> {
+    let (total, active, today) = state.db.get_account_stats()
+        .map_err(|e| format!("获取统计失败: {}", e))?;
     
     Ok(DashboardStats {
         total_accounts: total,
         active_accounts: active,
-        today_registered: 0,
+        today_registered: today,
         success_rate: if total > 0 { (active as f64 / total as f64) * 100.0 } else { 0.0 },
     })
 }
@@ -30,13 +30,13 @@ pub async fn get_dashboard_stats(state: State<'_, AppState>) -> Result<Dashboard
 // ============ 账号管理相关 ============
 
 #[tauri::command]
-pub async fn get_accounts(state: State<'_, AppState>) -> Result<Vec<Account>, String> {
-    let accounts = state.accounts.lock().await;
-    Ok(accounts.clone())
+pub fn get_accounts(state: State<'_, AppState>) -> Result<Vec<Account>, String> {
+    state.db.get_accounts()
+        .map_err(|e| format!("获取账号失败: {}", e))
 }
 
 #[tauri::command]
-pub async fn add_account(
+pub fn add_account(
     state: State<'_, AppState>,
     email: String,
     username: String,
@@ -49,29 +49,29 @@ pub async fn add_account(
         created_at: Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
     };
     
-    let mut accounts = state.accounts.lock().await;
-    accounts.push(account.clone());
+    state.db.add_account(&account)
+        .map_err(|e| format!("添加账号失败: {}", e))?;
     
     Ok(account)
 }
 
 #[tauri::command]
-pub async fn delete_account(state: State<'_, AppState>, id: String) -> Result<(), String> {
-    let mut accounts = state.accounts.lock().await;
-    accounts.retain(|a| a.id != id);
-    Ok(())
+pub fn delete_account(state: State<'_, AppState>, id: String) -> Result<(), String> {
+    state.db.delete_account(&id)
+        .map_err(|e| format!("删除账号失败: {}", e))
 }
+
 
 // ============ 邮箱配置相关 ============
 
 #[tauri::command]
-pub async fn get_email_configs(state: State<'_, AppState>) -> Result<Vec<EmailConfig>, String> {
-    let configs = state.email_configs.lock().await;
-    Ok(configs.clone())
+pub fn get_email_configs(state: State<'_, AppState>) -> Result<Vec<EmailConfig>, String> {
+    state.db.get_email_configs()
+        .map_err(|e| format!("获取邮箱配置失败: {}", e))
 }
 
 #[tauri::command]
-pub async fn add_email_config(
+pub fn add_email_config(
     state: State<'_, AppState>,
     domain: String,
     imap_host: String,
@@ -91,14 +91,14 @@ pub async fn add_email_config(
         created_at: Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
     };
     
-    let mut configs = state.email_configs.lock().await;
-    configs.push(config.clone());
+    state.db.add_email_config(&config)
+        .map_err(|e| format!("添加邮箱配置失败: {}", e))?;
     
     Ok(config)
 }
 
 #[tauri::command]
-pub async fn update_email_config(
+pub fn update_email_config(
     state: State<'_, AppState>,
     id: String,
     domain: String,
@@ -108,38 +108,42 @@ pub async fn update_email_config(
     password: String,
     password_mode: String,
 ) -> Result<EmailConfig, String> {
-    let mut configs = state.email_configs.lock().await;
+    let config = EmailConfig {
+        id: id.clone(),
+        domain,
+        imap_host,
+        imap_port,
+        username,
+        password,
+        password_mode,
+        created_at: String::new(), // 更新时不修改创建时间
+    };
     
-    if let Some(config) = configs.iter_mut().find(|c| c.id == id) {
-        config.domain = domain;
-        config.imap_host = imap_host;
-        config.imap_port = imap_port;
-        config.username = username;
-        config.password = password;
-        config.password_mode = password_mode;
-        return Ok(config.clone());
-    }
+    state.db.update_email_config(&config)
+        .map_err(|e| format!("更新邮箱配置失败: {}", e))?;
     
-    Err("配置不存在".to_string())
+    // 返回完整配置
+    state.db.get_email_config_by_id(&id)
+        .map_err(|e| format!("获取配置失败: {}", e))?
+        .ok_or_else(|| "配置不存在".to_string())
 }
 
 #[tauri::command]
-pub async fn delete_email_config(state: State<'_, AppState>, id: String) -> Result<(), String> {
-    let mut configs = state.email_configs.lock().await;
-    configs.retain(|c| c.id != id);
-    Ok(())
+pub fn delete_email_config(state: State<'_, AppState>, id: String) -> Result<(), String> {
+    state.db.delete_email_config(&id)
+        .map_err(|e| format!("删除邮箱配置失败: {}", e))
 }
 
 // ============ 日志管理相关 ============
 
 #[tauri::command]
-pub async fn get_logs(state: State<'_, AppState>) -> Result<Vec<LogEntry>, String> {
-    let logs = state.logs.lock().await;
-    Ok(logs.clone())
+pub fn get_logs(state: State<'_, AppState>) -> Result<Vec<LogEntry>, String> {
+    state.db.get_logs(500)
+        .map_err(|e| format!("获取日志失败: {}", e))
 }
 
 #[tauri::command]
-pub async fn add_log(
+pub fn add_log(
     state: State<'_, AppState>,
     level: String,
     message: String,
@@ -151,32 +155,25 @@ pub async fn add_log(
         timestamp: Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
     };
     
-    let mut logs = state.logs.lock().await;
-    logs.push(entry.clone());
+    state.db.add_log(&entry)
+        .map_err(|e| format!("添加日志失败: {}", e))?;
     
     Ok(entry)
 }
 
 #[tauri::command]
-pub async fn clear_logs(state: State<'_, AppState>) -> Result<(), String> {
-    let mut logs = state.logs.lock().await;
-    logs.clear();
-    Ok(())
+pub fn clear_logs(state: State<'_, AppState>) -> Result<(), String> {
+    state.db.clear_logs()
+        .map_err(|e| format!("清空日志失败: {}", e))
 }
+
 
 // ============ 系统管理相关 ============
 
 #[tauri::command]
-pub async fn clear_all_data(state: State<'_, AppState>) -> Result<(), String> {
-    let mut accounts = state.accounts.lock().await;
-    let mut email_configs = state.email_configs.lock().await;
-    let mut logs = state.logs.lock().await;
-    
-    accounts.clear();
-    email_configs.clear();
-    logs.clear();
-    
-    Ok(())
+pub fn clear_all_data(state: State<'_, AppState>) -> Result<(), String> {
+    state.db.clear_all_data()
+        .map_err(|e| format!("清空数据失败: {}", e))
 }
 
 #[tauri::command]
@@ -186,4 +183,129 @@ pub fn get_app_info() -> Result<serde_json::Value, String> {
         "version": "1.0.0",
         "author": "Qoder Team"
     }))
+}
+
+// ============ 注册相关 ============
+
+use std::process::Command;
+
+/// 注册结果
+#[derive(serde::Serialize)]
+pub struct RegisterResult {
+    pub success: bool,
+    pub email: String,
+    pub username: Option<String>,
+    pub error: Option<String>,
+}
+
+/// 单个账号注册
+#[tauri::command]
+pub fn register_single_account(
+    state: State<'_, AppState>,
+    email: String,
+    config_id: String,
+    headless: bool,
+) -> Result<RegisterResult, String> {
+    // 获取邮箱配置
+    let config = state.db.get_email_config_by_id(&config_id)
+        .map_err(|e| format!("获取配置失败: {}", e))?
+        .ok_or("邮箱配置不存在")?;
+    
+    // 构建node-core CLI命令参数
+    let node_core_path = std::env::current_dir()
+        .map_err(|e| e.to_string())?
+        .parent()
+        .and_then(|p| p.parent())
+        .map(|p| p.join("apps/node-core"))
+        .ok_or("无法找到node-core路径")?;
+    
+    // 记录开始日志
+    let start_log = LogEntry {
+        id: Uuid::new_v4().to_string(),
+        level: "info".to_string(),
+        message: format!("开始注册账号: {}", email),
+        timestamp: Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
+    };
+    let _ = state.db.add_log(&start_log);
+    
+    // 执行注册命令
+    let result = execute_registration(&email, &config, headless, &node_core_path);
+    
+    // 记录结果日志
+    let result_log = LogEntry {
+        id: Uuid::new_v4().to_string(),
+        level: if result.success { "info" } else { "error" }.to_string(),
+        message: format!(
+            "注册 {}: {}", 
+            email, 
+            if result.success { "成功" } else { result.error.as_deref().unwrap_or("失败") }
+        ),
+        timestamp: Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
+    };
+    let _ = state.db.add_log(&result_log);
+    
+    Ok(result)
+}
+
+/// 执行注册流程
+fn execute_registration(
+    email: &str,
+    config: &EmailConfig,
+    headless: bool,
+    node_core_path: &std::path::Path,
+) -> RegisterResult {
+    // 构建命令参数
+    let mut args = vec![
+        "src/index.js".to_string(),
+        "register".to_string(),
+        "single".to_string(),
+        email.to_string(),
+        "--config".to_string(),
+        config.domain.clone(),
+    ];
+    
+    if headless {
+        args.push("--headless".to_string());
+    }
+    
+    // 尝试调用node-core CLI
+    let output = Command::new("node")
+        .current_dir(node_core_path)
+        .args(&args)
+        .output();
+    
+    match output {
+        Ok(output) => {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            
+            if output.status.success() || stdout.contains("成功") || stdout.contains("SUCCESS") {
+                RegisterResult {
+                    success: true,
+                    email: email.to_string(),
+                    username: Some(email.split('@').next().unwrap_or("user").to_string()),
+                    error: None,
+                }
+            } else {
+                RegisterResult {
+                    success: false,
+                    email: email.to_string(),
+                    username: None,
+                    error: Some(if stderr.is_empty() { 
+                        stdout.to_string() 
+                    } else { 
+                        stderr.to_string() 
+                    }),
+                }
+            }
+        }
+        Err(e) => {
+            RegisterResult {
+                success: false,
+                email: email.to_string(),
+                username: None,
+                error: Some(format!("执行注册命令失败: {}。请确保已安装Node.js。", e)),
+            }
+        }
+    }
 }

@@ -8,6 +8,9 @@ src-tauri/gen/
 # 应用图标生成文件
 src-tauri/icons/
 
+# 开发环境数据目录（放在src-tauri外面避免触发重编译）
+.qoder-data/
+
 # 构建产物
 dist/
 build/

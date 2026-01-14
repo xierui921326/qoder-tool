@@ -17,6 +17,7 @@
                 <li><a href="#" class="nav-item active" data-page="dashboard">仪表板</a></li>
                 <li><a href="#" class="nav-item" data-page="accounts">账号管理</a></li>
                 <li><a href="#" class="nav-item" data-page="email-config">邮箱配置</a></li>
+                <li><a href="#" class="nav-item" data-page="batch-register">批量注册</a></li>
                 <li><a href="#" class="nav-item" data-page="logs">日志管理</a></li>
                 <li><a href="#" class="nav-item" data-page="settings">系统设置</a></li>
             </ul>
@@ -64,6 +65,106 @@
                 
                 <div id="email-config-list" class="email-config-grid">
                     <!-- 邮箱配置卡片将在这里动态生成 -->
+                </div>
+            </div>
+            
+            <div id="batch-register-page" class="page">
+                <h2>批量注册</h2>
+                <p class="page-subtitle">自动生成随机用户名批量注册Qoder账号</p>
+                
+                <div class="register-layout">
+                    <!-- 左侧：配置 -->
+                    <div class="register-left">
+                        <!-- 注册配置卡片 -->
+                        <div class="register-config-card">
+                            <div class="config-card-title">⚙️ 注册配置</div>
+                            
+                            <div class="config-group">
+                                <label>📧 邮箱配置 <span class="required">*</span></label>
+                                <select id="register-email-config">
+                                    <option value="">请选择邮箱配置</option>
+                                </select>
+                                <div class="config-hint" id="domain-hint">选择后将使用该域名生成邮箱</div>
+                            </div>
+                            
+                            <div class="config-group">
+                                <label>📝 注册数量 <span class="required">*</span></label>
+                                <input type="number" id="register-count" value="1" min="1" max="100" placeholder="1-100">
+                                <div class="config-hint">每次最多注册100个账号</div>
+                            </div>
+                            
+                            <div class="config-row-2">
+                                <div class="config-group">
+                                    <label>⏱️ 间隔(秒)</label>
+                                    <input type="number" id="register-delay" value="5" min="1" max="120">
+                                </div>
+                                <div class="config-group">
+                                    <label>🖥️ 浏览器</label>
+                                    <select id="register-headless">
+                                        <option value="false">可见</option>
+                                        <option value="true">无头</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="config-preview">
+                                <div class="preview-title">📋 预览生成的邮箱</div>
+                                <div class="preview-list" id="email-preview">
+                                    <span class="preview-placeholder">选择配置后显示预览</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 操作按钮 -->
+                        <div class="register-actions">
+                            <button id="start-register-btn" class="btn btn-primary btn-lg">🚀 开始注册</button>
+                            <button id="pause-register-btn" class="btn btn-secondary" disabled>⏸️</button>
+                            <button id="stop-register-btn" class="btn btn-danger" disabled>⏹️</button>
+                        </div>
+                    </div>
+                    
+                    <!-- 右侧：进度和结果 -->
+                    <div class="register-right">
+                        <!-- 进度统计 -->
+                        <div class="progress-card">
+                            <div class="progress-header">
+                                <span>📊 注册进度</span>
+                                <span id="register-status-badge" class="status-badge-sm">待开始</span>
+                            </div>
+                            <div class="progress-stats">
+                                <div class="stat-box">
+                                    <span class="stat-num" id="progress-total">0</span>
+                                    <span class="stat-label">总数</span>
+                                </div>
+                                <div class="stat-box stat-success">
+                                    <span class="stat-num" id="progress-success">0</span>
+                                    <span class="stat-label">成功</span>
+                                </div>
+                                <div class="stat-box stat-danger">
+                                    <span class="stat-num" id="progress-failed">0</span>
+                                    <span class="stat-label">失败</span>
+                                </div>
+                            </div>
+                            <div class="progress-bar-wrapper">
+                                <div class="progress-bar-bg">
+                                    <div class="progress-bar-fill" id="register-progress-bar"></div>
+                                </div>
+                                <span class="progress-percent" id="progress-percent">0%</span>
+                            </div>
+                            <div class="current-task" id="current-task">等待开始...</div>
+                        </div>
+                        
+                        <!-- 结果列表 -->
+                        <div class="results-card">
+                            <div class="results-header">
+                                <span>📋 注册结果</span>
+                                <button id="export-results-btn" class="btn-link">📥 导出</button>
+                            </div>
+                            <div id="register-results-list" class="results-list">
+                                <div class="empty-results">暂无结果</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
             

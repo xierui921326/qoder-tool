@@ -46,6 +46,9 @@ function loadPageData(pageName) {
         case 'email-config':
             loadEmailConfigs();
             break;
+        case 'batch-register':
+            loadBatchRegisterPage();
+            break;
         case 'logs':
             loadLogs();
             break;
@@ -497,6 +500,448 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+// ============ 批量注册 ============
+let registerState = {
+    isRunning: false,
+    isPaused: false,
+    emails: [],
+    results: [],
+    currentIndex: 0,
+    successCount: 0,
+    failedCount: 0,
+    selectedConfig: null  // 存储选中的邮箱配置
+};
+
+// 生成随机用户名：8位字母 + 6位数字
+function generateRandomUsername() {
+    const letters = 'abcdefghijklmnopqrstuvwxyz';
+    const digits = '0123456789';
+    
+    let username = '';
+    // 8位随机字母
+    for (let i = 0; i < 8; i++) {
+        username += letters.charAt(Math.floor(Math.random() * letters.length));
+    }
+    // 6位随机数字
+    for (let i = 0; i < 6; i++) {
+        username += digits.charAt(Math.floor(Math.random() * digits.length));
+    }
+    return username;
+}
+
+// 根据配置和数量生成邮箱列表
+function generateEmails(domain, count) {
+    const emails = [];
+    for (let i = 0; i < count; i++) {
+        const username = generateRandomUsername();
+        emails.push(`${username}@${domain}`);
+    }
+    return emails;
+}
+
+// 更新邮箱预览
+function updateEmailPreview() {
+    const configSelect = document.getElementById('register-email-config');
+    const countInput = document.getElementById('register-count');
+    const previewEl = document.getElementById('email-preview');
+    const domainHint = document.getElementById('domain-hint');
+    
+    const configId = configSelect.value;
+    const count = parseInt(countInput.value) || 1;
+    
+    if (!configId || !registerState.selectedConfig) {
+        previewEl.innerHTML = '<span class="preview-placeholder">选择配置后显示预览</span>';
+        domainHint.textContent = '选择后将使用该域名生成邮箱';
+        return;
+    }
+    
+    const domain = registerState.selectedConfig.domain;
+    domainHint.textContent = `将使用 @${domain} 域名`;
+    
+    // 生成预览（最多显示5个）
+    const previewCount = Math.min(count, 5);
+    const previewEmails = generateEmails(domain, previewCount);
+    
+    let html = previewEmails.map(email => 
+        `<div class="preview-email">${escapeHtml(email)}</div>`
+    ).join('');
+    
+    if (count > 5) {
+        html += `<div class="preview-more">... 还有 ${count - 5} 个</div>`;
+    }
+    
+    previewEl.innerHTML = html;
+}
+
+// 加载批量注册页面
+async function loadBatchRegisterPage() {
+    try {
+        // 加载邮箱配置到下拉框
+        const configs = await invoke('get_email_configs');
+        const select = document.getElementById('register-email-config');
+        
+        select.innerHTML = '<option value="">请选择邮箱配置</option>';
+        configs.forEach(config => {
+            select.innerHTML += `<option value="${config.id}" data-domain="${config.domain}">${config.domain} (${config.username})</option>`;
+        });
+        
+        // 存储配置列表供后续使用
+        registerState.configList = configs;
+        
+        // 重置预览
+        updateEmailPreview();
+        
+        // 重置进度显示
+        document.getElementById('progress-total').textContent = '0';
+        document.getElementById('progress-success').textContent = '0';
+        document.getElementById('progress-failed').textContent = '0';
+        document.getElementById('progress-percent').textContent = '0%';
+        document.getElementById('register-progress-bar').style.width = '0%';
+        document.getElementById('current-task').textContent = '等待开始...';
+        document.getElementById('register-results-list').innerHTML = '<div class="empty-results">暂无结果</div>';
+    } catch (err) {
+        console.error('加载批量注册页面失败:', err);
+    }
+}
+
+// 初始化批量注册操作
+function initBatchRegisterActions() {
+    // 邮箱配置选择变化时更新预览
+    const configSelect = document.getElementById('register-email-config');
+    if (configSelect) {
+        configSelect.addEventListener('change', () => {
+            const configId = configSelect.value;
+            if (configId && registerState.configList) {
+                registerState.selectedConfig = registerState.configList.find(c => c.id === configId);
+            } else {
+                registerState.selectedConfig = null;
+            }
+            updateEmailPreview();
+        });
+    }
+    
+    // 注册数量变化时更新预览
+    const countInput = document.getElementById('register-count');
+    if (countInput) {
+        countInput.addEventListener('input', updateEmailPreview);
+    }
+    
+    // 开始注册按钮
+    const startBtn = document.getElementById('start-register-btn');
+    if (startBtn) {
+        startBtn.addEventListener('click', startBatchRegister);
+    }
+    
+    // 暂停按钮
+    const pauseBtn = document.getElementById('pause-register-btn');
+    if (pauseBtn) {
+        pauseBtn.addEventListener('click', togglePauseRegister);
+    }
+    
+    // 停止按钮
+    const stopBtn = document.getElementById('stop-register-btn');
+    if (stopBtn) {
+        stopBtn.addEventListener('click', stopBatchRegister);
+    }
+    
+    // 导出结果按钮
+    const exportBtn = document.getElementById('export-results-btn');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', exportRegisterResults);
+    }
+}
+
+// 开始批量注册
+async function startBatchRegister() {
+    try {
+        // 验证配置
+        const configId = document.getElementById('register-email-config').value;
+        if (!configId) {
+            showToast('请选择邮箱配置', 'error');
+            return;
+        }
+        
+        if (!registerState.selectedConfig) {
+            showToast('邮箱配置无效', 'error');
+            return;
+        }
+        
+        const count = parseInt(document.getElementById('register-count').value) || 1;
+        if (count < 1 || count > 100) {
+            showToast('注册数量必须在1-100之间', 'error');
+            return;
+        }
+        
+        // 获取配置参数
+        const delay = parseInt(document.getElementById('register-delay').value) || 5;
+        const headless = document.getElementById('register-headless').value === 'true';
+        
+        // 自动生成邮箱列表
+        const domain = registerState.selectedConfig.domain;
+        const emails = generateEmails(domain, count);
+        
+        // 初始化状态
+        registerState = {
+            ...registerState,
+            isRunning: true,
+            isPaused: false,
+            emails: emails,
+            results: [],
+            currentIndex: 0,
+            successCount: 0,
+            failedCount: 0
+        };
+        
+        // 更新UI
+        updateRegisterUI('running');
+        
+        // 初始化结果列表
+        initResultsList(emails);
+        
+        // 调用后端开始注册
+        showToast('开始批量注册...', 'success');
+        
+        // 逐个处理邮箱
+        for (let i = 0; i < emails.length; i++) {
+            if (!registerState.isRunning) break;
+            
+            // 等待暂停状态解除
+            while (registerState.isPaused && registerState.isRunning) {
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            
+            if (!registerState.isRunning) break;
+            
+            registerState.currentIndex = i;
+            const email = emails[i];
+            
+            // 更新当前任务显示
+            updateCurrentTask(`正在注册: ${email}`);
+            updateResultStatus(i, 'processing', '注册中...');
+            
+            try {
+                // 调用后端注册命令
+                const result = await invoke('register_single_account', {
+                    email: email,
+                    configId: configId,
+                    headless: headless
+                });
+                
+                if (result.success) {
+                    registerState.successCount++;
+                    updateResultStatus(i, 'success', '注册成功');
+                    
+                    // 添加到账号列表
+                    await invoke('add_account', { 
+                        email: email, 
+                        username: result.username || email.split('@')[0]
+                    });
+                } else {
+                    registerState.failedCount++;
+                    updateResultStatus(i, 'failed', result.error || '注册失败');
+                }
+                
+                registerState.results.push(result);
+                
+            } catch (err) {
+                registerState.failedCount++;
+                updateResultStatus(i, 'failed', err.toString());
+                registerState.results.push({ email, success: false, error: err.toString() });
+            }
+            
+            // 更新进度
+            updateProgress();
+            
+            // 添加日志
+            await invoke('add_log', {
+                level: registerState.results[i]?.success ? 'info' : 'error',
+                message: `注册 ${email}: ${registerState.results[i]?.success ? '成功' : '失败'}`
+            });
+            
+            // 延迟
+            if (i < emails.length - 1 && registerState.isRunning) {
+                updateCurrentTask(`等待 ${delay} 秒后继续...`);
+                await new Promise(resolve => setTimeout(resolve, delay * 1000));
+            }
+        }
+        
+        // 完成
+        registerState.isRunning = false;
+        updateRegisterUI('completed');
+        updateCurrentTask('批量注册完成');
+        
+        showToast(`注册完成！成功: ${registerState.successCount}, 失败: ${registerState.failedCount}`, 
+            registerState.failedCount === 0 ? 'success' : 'error');
+        
+        // 刷新仪表板数据
+        loadDashboard();
+        
+    } catch (err) {
+        console.error('批量注册失败:', err);
+        showToast('批量注册失败: ' + err, 'error');
+        registerState.isRunning = false;
+        updateRegisterUI('stopped');
+    }
+}
+
+// 暂停/恢复注册
+function togglePauseRegister() {
+    registerState.isPaused = !registerState.isPaused;
+    
+    const pauseBtn = document.getElementById('pause-register-btn');
+    if (registerState.isPaused) {
+        pauseBtn.textContent = '▶️ 继续';
+        updateRegisterUI('paused');
+        updateCurrentTask('已暂停');
+    } else {
+        pauseBtn.textContent = '⏸️ 暂停';
+        updateRegisterUI('running');
+    }
+}
+
+// 停止注册
+function stopBatchRegister() {
+    if (confirm('确定要停止批量注册吗？')) {
+        registerState.isRunning = false;
+        registerState.isPaused = false;
+        updateRegisterUI('stopped');
+        updateCurrentTask('已停止');
+        showToast('批量注册已停止', 'success');
+    }
+}
+
+// 更新注册UI状态
+function updateRegisterUI(status) {
+    const startBtn = document.getElementById('start-register-btn');
+    const pauseBtn = document.getElementById('pause-register-btn');
+    const stopBtn = document.getElementById('stop-register-btn');
+    const statusBadge = document.getElementById('register-status-badge');
+    
+    switch (status) {
+        case 'running':
+            startBtn.disabled = true;
+            pauseBtn.disabled = false;
+            stopBtn.disabled = false;
+            statusBadge.textContent = '运行中';
+            statusBadge.className = 'status-badge-sm running';
+            break;
+        case 'paused':
+            startBtn.disabled = true;
+            pauseBtn.disabled = false;
+            stopBtn.disabled = false;
+            statusBadge.textContent = '已暂停';
+            statusBadge.className = 'status-badge-sm paused';
+            break;
+        case 'completed':
+            startBtn.disabled = false;
+            pauseBtn.disabled = true;
+            stopBtn.disabled = true;
+            statusBadge.textContent = '已完成';
+            statusBadge.className = 'status-badge-sm completed';
+            break;
+        case 'stopped':
+            startBtn.disabled = false;
+            pauseBtn.disabled = true;
+            stopBtn.disabled = true;
+            statusBadge.textContent = '已停止';
+            statusBadge.className = 'status-badge-sm stopped';
+            break;
+        default:
+            startBtn.disabled = false;
+            pauseBtn.disabled = true;
+            stopBtn.disabled = true;
+            statusBadge.textContent = '待开始';
+            statusBadge.className = 'status-badge-sm';
+    }
+}
+
+// 初始化结果列表
+function initResultsList(emails) {
+    const container = document.getElementById('register-results-list');
+    container.innerHTML = emails.map((email, index) => `
+        <div class="result-item" id="result-${index}">
+            <span class="result-email">${escapeHtml(email)}</span>
+            <span class="result-status pending" id="result-status-${index}">待处理</span>
+        </div>
+    `).join('');
+    
+    // 更新进度显示
+    document.getElementById('progress-total').textContent = emails.length;
+    document.getElementById('progress-success').textContent = '0';
+    document.getElementById('progress-failed').textContent = '0';
+    document.getElementById('progress-percent').textContent = '0%';
+    document.getElementById('register-progress-bar').style.width = '0%';
+}
+
+// 更新结果状态
+function updateResultStatus(index, status, message) {
+    const statusEl = document.getElementById(`result-status-${index}`);
+    const msgEl = document.getElementById(`result-msg-${index}`);
+    
+    if (statusEl) {
+        statusEl.className = `result-status ${status}`;
+        statusEl.textContent = status === 'success' ? '成功' : 
+                               status === 'failed' ? '失败' : 
+                               status === 'processing' ? '处理中' : '待处理';
+    }
+    
+    if (msgEl && message) {
+        msgEl.textContent = message;
+        msgEl.title = message;
+    }
+}
+
+// 更新进度
+function updateProgress() {
+    const total = registerState.emails.length;
+    const processed = registerState.currentIndex + 1;
+    const percent = Math.round((processed / total) * 100);
+    
+    document.getElementById('progress-total').textContent = total;
+    document.getElementById('progress-success').textContent = registerState.successCount;
+    document.getElementById('progress-failed').textContent = registerState.failedCount;
+    document.getElementById('progress-percent').textContent = `${percent}%`;
+    
+    document.getElementById('register-progress-bar').style.width = `${percent}%`;
+}
+
+// 更新当前任务
+function updateCurrentTask(text) {
+    const taskEl = document.getElementById('current-task');
+    if (taskEl) {
+        taskEl.textContent = text;
+    }
+}
+
+// 导出注册结果
+function exportRegisterResults() {
+    if (registerState.results.length === 0) {
+        showToast('没有可导出的结果', 'error');
+        return;
+    }
+    
+    // 生成CSV内容
+    let csv = '邮箱,状态,消息,时间\n';
+    registerState.results.forEach((result, index) => {
+        const email = registerState.emails[index];
+        const status = result.success ? '成功' : '失败';
+        const message = result.error || '';
+        const time = new Date().toLocaleString();
+        csv += `${email},${status},"${message}",${time}\n`;
+    });
+    
+    // 下载文件
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `register-results-${Date.now()}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    
+    showToast('结果已导出', 'success');
+}
+
 // ============ 初始化 ============
 document.addEventListener('DOMContentLoaded', () => {
     initNavigation();
@@ -505,6 +950,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initEmailConfigActions();
     initLogActions();
     initSettingsActions();
+    initBatchRegisterActions();
     
     // 加载仪表板数据
     loadDashboard();

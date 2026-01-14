@@ -28,6 +28,8 @@ fn main() {
             // 系统管理
             clear_all_data,
             get_app_info,
+            // 注册功能
+            register_single_account,
         ])
         .run(tauri::generate_context!())
         .expect("启动Tauri应用失败");

@@ -1,13 +1,13 @@
 use std::sync::Arc;
-use tokio::sync::Mutex;
 
 pub mod commands;
+pub mod database;
 
-/// 应用状态
+pub use database::Database;
+
+/// 应用状态 - 使用SQLite数据库
 pub struct AppState {
-    pub accounts: Arc<Mutex<Vec<Account>>>,
-    pub email_configs: Arc<Mutex<Vec<EmailConfig>>>,
-    pub logs: Arc<Mutex<Vec<LogEntry>>>,
+    pub db: Arc<Database>,
 }
 
 /// 账号信息
@@ -42,12 +42,30 @@ pub struct LogEntry {
     pub timestamp: String,
 }
 
+impl AppState {
+    pub fn new() -> Result<Self, String> {
+        // 初始化数据目录
+        database::init_data_dirs()
+            .map_err(|e| format!("创建数据目录失败: {}", e))?;
+        
+        let db_path = database::get_db_path();
+        println!("数据目录结构:");
+        println!("  - 数据库: {:?}", db_path);
+        println!("  - 日志: {:?}", database::get_logs_dir());
+        println!("  - 配置: {:?}", database::get_config_dir());
+        println!("  - 缓存: {:?}", database::get_cache_dir());
+        
+        let db = Database::new(db_path)
+            .map_err(|e| format!("初始化数据库失败: {}", e))?;
+        
+        Ok(Self {
+            db: Arc::new(db),
+        })
+    }
+}
+
 impl Default for AppState {
     fn default() -> Self {
-        Self {
-            accounts: Arc::new(Mutex::new(Vec::new())),
-            email_configs: Arc::new(Mutex::new(Vec::new())),
-            logs: Arc::new(Mutex::new(Vec::new())),
-        }
+        Self::new().expect("初始化应用状态失败")
     }
 }
