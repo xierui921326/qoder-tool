@@ -2804,3 +2804,557 @@ body {
     opacity: 0.8;
 }
 
+
+
+/* ==================== 页面标题区域优化 ==================== */
+.page-title-section {
+    margin-bottom: 24px;
+}
+
+.page-title-section h2 {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.page-title-section .page-desc {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin: 0;
+}
+
+/* ==================== 自定义数字输入框 ==================== */
+.number-input-wrapper {
+    display: flex;
+    align-items: center;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: all 0.2s;
+}
+
+.number-input-wrapper:hover {
+    border-color: var(--accent-primary);
+}
+
+.number-input-wrapper:focus-within {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.number-btn {
+    width: 36px;
+    height: 40px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 18px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.number-btn:hover {
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--accent-primary);
+}
+
+.number-btn:active {
+    background: rgba(99, 102, 241, 0.25);
+}
+
+.number-input {
+    flex: 1;
+    border: none !important;
+    background: transparent !important;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    padding: 10px 4px !important;
+    -moz-appearance: textfield;
+    box-shadow: none !important;
+}
+
+.number-input::-webkit-outer-spin-button,
+.number-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.number-input:focus {
+    outline: none;
+}
+
+/* ==================== 自定义选择框优化 ==================== */
+.custom-select {
+    width: 100%;
+    padding: 10px 40px 10px 14px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 14px;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    transition: all 0.2s;
+}
+
+.custom-select:hover {
+    border-color: var(--accent-primary);
+}
+
+.custom-select:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.custom-select option {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    padding: 12px;
+}
+
+/* ==================== 批量注册布局优化 ==================== */
+.register-layout {
+    display: flex;
+    gap: 24px;
+    height: calc(100vh - 200px);
+    min-height: 400px;
+}
+
+.register-left {
+    flex: 0 0 420px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.register-right {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+}
+
+/* 配置卡片优化 */
+.register-config-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.config-card-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* 配置提示优化 */
+.config-hint {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 8px;
+    padding-left: 2px;
+}
+
+/* 预览区域固定高度 */
+.config-preview {
+    margin-top: auto;
+    padding: 14px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    border: 1px dashed var(--border-color);
+    min-height: 120px;
+    max-height: 120px;
+    display: flex;
+    flex-direction: column;
+}
+
+.preview-title {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+    flex-shrink: 0;
+}
+
+.preview-list {
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 11px;
+    color: var(--text-primary);
+    line-height: 1.6;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.preview-placeholder {
+    color: var(--text-muted);
+    font-style: italic;
+    font-family: inherit;
+}
+
+.preview-email {
+    display: block;
+    padding: 1px 0;
+}
+
+.preview-more {
+    color: var(--text-muted);
+    font-style: italic;
+    margin-top: 4px;
+}
+
+/* 操作按钮优化 */
+.register-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.register-actions .btn-lg {
+    flex: 1;
+    padding: 14px 20px;
+    font-size: 15px;
+}
+
+.btn-icon-only {
+    width: 50px;
+    padding: 14px;
+    flex-shrink: 0;
+}
+
+/* 进度卡片优化 */
+.progress-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px;
+    flex-shrink: 0;
+}
+
+/* 结果卡片优化 */
+.results-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.results-list {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+/* 配置组优化 */
+.config-group {
+    margin-bottom: 0;
+}
+
+.config-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+/* 两列配置优化 */
+.config-row-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.config-row-2 .config-group {
+    margin-bottom: 0;
+}
+
+
+/* ==================== 自定义下拉选择框 - 深色主题优化 ==================== */
+.custom-select-wrapper {
+    position: relative;
+    display: block;
+}
+
+.custom-select-wrapper .custom-select {
+    width: 100%;
+    padding: 12px 44px 12px 14px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 14px;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    transition: all 0.2s;
+    background-image: none;
+}
+
+.custom-select-wrapper .custom-select:hover {
+    border-color: var(--accent-primary);
+    background: var(--bg-card);
+}
+
+.custom-select-wrapper .custom-select:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.custom-select-wrapper .select-icon {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 10px;
+    pointer-events: none;
+    transition: all 0.2s;
+}
+
+.custom-select-wrapper:hover .select-icon {
+    color: var(--accent-primary);
+}
+
+.custom-select-wrapper .custom-select:focus + .select-icon {
+    color: var(--accent-primary);
+    transform: translateY(-50%) rotate(180deg);
+}
+
+/* 下拉选项样式 */
+.custom-select-wrapper .custom-select option {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    padding: 12px 16px;
+    border: none;
+}
+
+.custom-select-wrapper .custom-select option:hover,
+.custom-select-wrapper .custom-select option:checked {
+    background: var(--accent-primary);
+    color: white;
+}
+
+/* 数字按钮禁用状态 */
+.number-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.number-btn:disabled:hover {
+    background: transparent;
+    color: var(--text-secondary);
+}
+
+/* 配置组间距优化 */
+.register-config-card .config-group {
+    margin-bottom: 16px;
+}
+
+.register-config-card .config-row-2 {
+    margin-bottom: 16px;
+}
+
+.register-config-card .config-row-2 .config-group {
+    margin-bottom: 0;
+}
+
+
+/* ==================== 结果错误信息样式 ==================== */
+.result-error {
+    display: block;
+    font-size: 11px;
+    color: var(--danger);
+    margin-top: 4px;
+    padding: 4px 8px;
+    background: rgba(239, 68, 68, 0.1);
+    border-radius: 4px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: help;
+}
+
+/* 结果项布局优化 - 支持错误信息 */
+.result-item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    font-size: 13px;
+}
+
+.result-item .result-email {
+    flex: 1;
+    min-width: 0;
+}
+
+.result-item .result-error {
+    flex-basis: 100%;
+    margin-top: 4px;
+}
+
+
+/* ==================== 自定义下拉组件 ==================== */
+.custom-dropdown {
+    position: relative;
+    width: 100%;
+}
+
+.dropdown-selected {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+}
+
+.dropdown-selected:hover {
+    border-color: var(--accent-primary);
+    background: var(--bg-card);
+}
+
+.dropdown-selected.active {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.dropdown-text {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dropdown-text.placeholder {
+    color: var(--text-muted);
+}
+
+.dropdown-arrow {
+    font-size: 10px;
+    color: var(--text-muted);
+    transition: transform 0.2s;
+    margin-left: 10px;
+}
+
+.dropdown-selected.active .dropdown-arrow {
+    transform: rotate(180deg);
+    color: var(--accent-primary);
+}
+
+.dropdown-options {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    z-index: 1000;
+    max-height: 200px;
+    overflow-y: auto;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transition: all 0.2s ease;
+}
+
+.dropdown-options.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.dropdown-option {
+    padding: 12px 16px;
+    color: var(--text-primary);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.dropdown-option:last-child {
+    border-bottom: none;
+}
+
+.dropdown-option:hover {
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--accent-primary);
+}
+
+.dropdown-option.selected {
+    background: rgba(99, 102, 241, 0.2);
+    color: var(--accent-primary);
+    font-weight: 500;
+}
+
+.dropdown-option.selected::before {
+    content: "✓ ";
+    font-weight: bold;
+}
+
+/* 空选项提示 */
+.dropdown-empty {
+    padding: 16px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+/* 下拉选项滚动条 */
+.dropdown-options::-webkit-scrollbar {
+    width: 6px;
+}
+
+.dropdown-options::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.dropdown-options::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 3px;
+}
+
+.dropdown-options::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}

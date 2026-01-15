@@ -211,25 +211,69 @@ pub fn register_single_account(
         .map_err(|e| format!("获取配置失败: {}", e))?
         .ok_or("邮箱配置不存在")?;
     
-    // 构建node-core CLI命令参数
-    let node_core_path = std::env::current_dir()
-        .map_err(|e| e.to_string())?
-        .parent()
-        .and_then(|p| p.parent())
-        .map(|p| p.join("apps/node-core"))
-        .ok_or("无法找到node-core路径")?;
-    
     // 记录开始日志
     let start_log = LogEntry {
         id: Uuid::new_v4().to_string(),
         level: "info".to_string(),
-        message: format!("开始注册账号: {}", email),
+        message: format!("开始注册账号: {} (配置: {})", email, config.domain),
         timestamp: Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
     };
     let _ = state.db.add_log(&start_log);
     
+    // 记录当前工作目录
+    let cwd = std::env::current_dir().unwrap_or_default();
+    let cwd_log = LogEntry {
+        id: Uuid::new_v4().to_string(),
+        level: "debug".to_string(),
+        message: format!("当前工作目录: {:?}", cwd),
+        timestamp: Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
+    };
+    let _ = state.db.add_log(&cwd_log);
+    
+    // 获取node-core路径
+    let node_core_path = get_node_core_path();
+    
+    // 记录路径日志
+    let path_log = LogEntry {
+        id: Uuid::new_v4().to_string(),
+        level: "debug".to_string(),
+        message: format!("node-core路径: {:?}", node_core_path),
+        timestamp: Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
+    };
+    let _ = state.db.add_log(&path_log);
+    
     // 执行注册命令
-    let result = execute_registration(&email, &config, headless, &node_core_path);
+    let result = match node_core_path {
+        Some(path) => {
+            // 记录即将执行的命令
+            let cmd_log = LogEntry {
+                id: Uuid::new_v4().to_string(),
+                level: "debug".to_string(),
+                message: format!("执行命令: node src/index.js register single {} --config {}", email, config.domain),
+                timestamp: Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
+            };
+            let _ = state.db.add_log(&cmd_log);
+            
+            execute_registration(&email, &config, headless, &path)
+        },
+        None => {
+            // 记录路径查找失败的详细信息
+            let err_log = LogEntry {
+                id: Uuid::new_v4().to_string(),
+                level: "error".to_string(),
+                message: format!("无法找到node-core，当前目录: {:?}，尝试的路径: apps/node-core", cwd),
+                timestamp: Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
+            };
+            let _ = state.db.add_log(&err_log);
+            
+            RegisterResult {
+                success: false,
+                email: email.clone(),
+                username: None,
+                error: Some(format!("无法找到node-core模块，当前目录: {:?}", cwd)),
+            }
+        }
+    };
     
     // 记录结果日志
     let result_log = LogEntry {
@@ -238,13 +282,52 @@ pub fn register_single_account(
         message: format!(
             "注册 {}: {}", 
             email, 
-            if result.success { "成功" } else { result.error.as_deref().unwrap_or("失败") }
+            if result.success { "成功".to_string() } else { result.error.clone().unwrap_or("失败".to_string()) }
         ),
         timestamp: Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
     };
     let _ = state.db.add_log(&result_log);
     
     Ok(result)
+}
+
+/// 获取node-core路径
+fn get_node_core_path() -> Option<std::path::PathBuf> {
+    // 获取当前工作目录
+    let cwd = std::env::current_dir().ok()?;
+    
+    // 尝试多种路径策略
+    let possible_paths = vec![
+        // 策略1：从当前目录直接查找 apps/node-core
+        cwd.join("apps/node-core"),
+        // 策略2：从当前目录向上一级查找 apps/node-core
+        cwd.parent().map(|p| p.join("apps/node-core")).unwrap_or_default(),
+        // 策略3：从当前目录向上两级查找 apps/node-core
+        cwd.parent().and_then(|p| p.parent()).map(|p| p.join("apps/node-core")).unwrap_or_default(),
+        // 策略4：从src-tauri目录向上查找
+        cwd.join("../node-core"),
+        cwd.join("../../node-core"),
+        // 策略5：相对于可执行文件位置
+        std::env::current_exe().ok().and_then(|p| p.parent().map(|p| p.join("../../../apps/node-core"))).unwrap_or_default(),
+    ];
+    
+    for path in possible_paths {
+        if path.as_os_str().is_empty() {
+            continue;
+        }
+        // 先检查原始路径
+        if path.join("package.json").exists() {
+            return Some(path);
+        }
+        // 再尝试规范化路径
+        if let Ok(normalized) = path.canonicalize() {
+            if normalized.join("package.json").exists() {
+                return Some(normalized);
+            }
+        }
+    }
+    
+    None
 }
 
 /// 执行注册流程
@@ -254,7 +337,33 @@ fn execute_registration(
     headless: bool,
     node_core_path: &std::path::Path,
 ) -> RegisterResult {
+    // 检查node是否可用
+    let node_check = Command::new("node")
+        .arg("--version")
+        .output();
+    
+    if node_check.is_err() {
+        return RegisterResult {
+            success: false,
+            email: email.to_string(),
+            username: None,
+            error: Some("Node.js未安装或不在PATH中".to_string()),
+        };
+    }
+    
+    // 检查index.js是否存在
+    let index_path = node_core_path.join("src/index.js");
+    if !index_path.exists() {
+        return RegisterResult {
+            success: false,
+            email: email.to_string(),
+            username: None,
+            error: Some(format!("找不到入口文件: {:?}", index_path)),
+        };
+    }
+    
     // 构建命令参数
+    // 使用 --config 指定邮箱配置名称（域名）
     let mut args = vec![
         "src/index.js".to_string(),
         "register".to_string(),
@@ -268,18 +377,38 @@ fn execute_registration(
         args.push("--headless".to_string());
     }
     
+    // 设置环境变量，传递IMAP配置
+    let imap_port_str = config.imap_port.to_string();
+    let env_vars = vec![
+        ("QODER_IMAP_HOST", config.imap_host.as_str()),
+        ("QODER_IMAP_PORT", imap_port_str.as_str()),
+        ("QODER_IMAP_USER", config.username.as_str()),
+        ("QODER_IMAP_PASS", config.password.as_str()),
+        ("QODER_EMAIL_DOMAIN", config.domain.as_str()),
+    ];
+    
     // 尝试调用node-core CLI
-    let output = Command::new("node")
-        .current_dir(node_core_path)
-        .args(&args)
-        .output();
+    let mut cmd = Command::new("node");
+    cmd.current_dir(node_core_path)
+        .args(&args);
+    
+    // 添加环境变量
+    for (key, value) in &env_vars {
+        cmd.env(*key, *value);
+    }
+    
+    let output = cmd.output();
     
     match output {
         Ok(output) => {
             let stdout = String::from_utf8_lossy(&output.stdout);
             let stderr = String::from_utf8_lossy(&output.stderr);
             
-            if output.status.success() || stdout.contains("成功") || stdout.contains("SUCCESS") {
+            // 组合完整输出用于调试
+            let _full_output = format!("stdout: {}\nstderr: {}", stdout, stderr);
+            
+            // 检查是否成功
+            if output.status.success() || stdout.contains("成功") || stdout.contains("SUCCESS") || stdout.contains("✅") {
                 RegisterResult {
                     success: true,
                     email: email.to_string(),
@@ -287,15 +416,20 @@ fn execute_registration(
                     error: None,
                 }
             } else {
+                // 组合错误信息，提供更详细的调试信息
+                let error_msg = if !stderr.is_empty() && !stderr.trim().is_empty() {
+                    format!("错误: {}", stderr.lines().take(3).collect::<Vec<_>>().join(" "))
+                } else if !stdout.is_empty() && !stdout.trim().is_empty() {
+                    format!("输出: {}", stdout.lines().take(3).collect::<Vec<_>>().join(" "))
+                } else {
+                    format!("注册失败，退出码: {:?}，路径: {:?}", output.status.code(), node_core_path)
+                };
+                
                 RegisterResult {
                     success: false,
                     email: email.to_string(),
                     username: None,
-                    error: Some(if stderr.is_empty() { 
-                        stdout.to_string() 
-                    } else { 
-                        stderr.to_string() 
-                    }),
+                    error: Some(error_msg),
                 }
             }
         }
@@ -304,7 +438,7 @@ fn execute_registration(
                 success: false,
                 email: email.to_string(),
                 username: None,
-                error: Some(format!("执行注册命令失败: {}。请确保已安装Node.js。", e)),
+                error: Some(format!("执行命令失败: {}，路径: {:?}", e, node_core_path)),
             }
         }
     }

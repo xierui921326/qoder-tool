@@ -69,8 +69,10 @@
             </div>
             
             <div id="batch-register-page" class="page">
-                <h2>批量注册</h2>
-                <p class="page-subtitle">自动生成随机用户名批量注册Qoder账号</p>
+                <div class="page-title-section">
+                    <h2>批量注册</h2>
+                    <p class="page-desc">自动生成随机用户名批量注册Qoder账号</p>
+                </div>
                 
                 <div class="register-layout">
                     <!-- 左侧：配置 -->
@@ -79,34 +81,59 @@
                         <div class="register-config-card">
                             <div class="config-card-title">⚙️ 注册配置</div>
                             
+                            <!-- 邮箱配置单独一行 -->
                             <div class="config-group">
                                 <label>📧 邮箱配置 <span class="required">*</span></label>
-                                <select id="register-email-config">
-                                    <option value="">请选择邮箱配置</option>
-                                </select>
-                                <div class="config-hint" id="domain-hint">选择后将使用该域名生成邮箱</div>
+                                <div class="custom-dropdown" id="email-config-dropdown">
+                                    <div class="dropdown-selected" id="dropdown-selected">
+                                        <span class="dropdown-text">请选择邮箱配置</span>
+                                        <span class="dropdown-arrow">▼</span>
+                                    </div>
+                                    <div class="dropdown-options" id="dropdown-options">
+                                        <!-- 选项将由JS动态生成 -->
+                                    </div>
+                                    <input type="hidden" id="register-email-config" value="">
+                                </div>
+                                <div class="config-hint" id="domain-hint">选择邮箱配置后将使用该域名生成邮箱</div>
                             </div>
                             
-                            <div class="config-group">
-                                <label>📝 注册数量 <span class="required">*</span></label>
-                                <input type="number" id="register-count" value="1" min="1" max="100" placeholder="1-100">
-                                <div class="config-hint">每次最多注册100个账号</div>
-                            </div>
-                            
+                            <!-- 数量和间隔放一行 -->
                             <div class="config-row-2">
                                 <div class="config-group">
-                                    <label>⏱️ 间隔(秒)</label>
-                                    <input type="number" id="register-delay" value="5" min="1" max="120">
+                                    <label>📝 数量 <span class="required">*</span></label>
+                                    <div class="number-input-wrapper">
+                                        <button type="button" class="number-btn minus" data-target="register-count">−</button>
+                                        <input type="number" id="register-count" value="1" min="1" max="100" class="number-input">
+                                        <button type="button" class="number-btn plus" data-target="register-count">+</button>
+                                    </div>
                                 </div>
                                 <div class="config-group">
-                                    <label>🖥️ 浏览器</label>
-                                    <select id="register-headless">
-                                        <option value="false">可见</option>
-                                        <option value="true">无头</option>
-                                    </select>
+                                    <label>⏱️ 间隔(秒)</label>
+                                    <div class="number-input-wrapper">
+                                        <button type="button" class="number-btn minus" data-target="register-delay">−</button>
+                                        <input type="number" id="register-delay" value="5" min="1" max="120" class="number-input">
+                                        <button type="button" class="number-btn plus" data-target="register-delay">+</button>
+                                    </div>
                                 </div>
                             </div>
                             
+                            <!-- 浏览器模式单独一行 -->
+                            <div class="config-group">
+                                <label>🖥️ 浏览器模式</label>
+                                <div class="custom-dropdown" id="headless-dropdown">
+                                    <div class="dropdown-selected" id="headless-dropdown-selected">
+                                        <span class="dropdown-text">可见模式 - 显示浏览器窗口</span>
+                                        <span class="dropdown-arrow">▼</span>
+                                    </div>
+                                    <div class="dropdown-options" id="headless-dropdown-options">
+                                        <div class="dropdown-option selected" data-value="false">可见模式 - 显示浏览器窗口</div>
+                                        <div class="dropdown-option" data-value="true">无头模式 - 后台运行</div>
+                                    </div>
+                                    <input type="hidden" id="register-headless" value="false">
+                                </div>
+                            </div>
+                            
+                            <!-- 预览区域 - 固定高度 -->
                             <div class="config-preview">
                                 <div class="preview-title">📋 预览生成的邮箱</div>
                                 <div class="preview-list" id="email-preview">
@@ -118,8 +145,8 @@
                         <!-- 操作按钮 -->
                         <div class="register-actions">
                             <button id="start-register-btn" class="btn btn-primary btn-lg">🚀 开始注册</button>
-                            <button id="pause-register-btn" class="btn btn-secondary" disabled>⏸️</button>
-                            <button id="stop-register-btn" class="btn btn-danger" disabled>⏹️</button>
+                            <button id="pause-register-btn" class="btn btn-secondary btn-icon-only" disabled>⏸️</button>
+                            <button id="stop-register-btn" class="btn btn-danger btn-icon-only" disabled>⏹️</button>
                         </div>
                     </div>
                     

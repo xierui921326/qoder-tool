@@ -509,6 +509,35 @@ export class CLI {
   }
 
   /**
+   * 从环境变量获取邮箱配置
+   * 用于桌面应用传递配置
+   * @returns {EmailConfig|null} 邮箱配置，如果环境变量不完整则返回null
+   */
+  getEmailConfigFromEnv() {
+    const imapHost = process.env.QODER_IMAP_HOST;
+    const imapPort = process.env.QODER_IMAP_PORT;
+    const imapUser = process.env.QODER_IMAP_USER;
+    const imapPass = process.env.QODER_IMAP_PASS;
+    const emailDomain = process.env.QODER_EMAIL_DOMAIN;
+    
+    // 检查必要的环境变量是否存在
+    if (!imapHost || !imapUser || !imapPass) {
+      return null;
+    }
+    
+    this.logger.debug('从环境变量读取邮箱配置', { imapHost, imapUser, emailDomain });
+    
+    return new EmailConfig({
+      imapServer: imapHost,
+      imapPort: parseInt(imapPort || '993'),
+      username: imapUser,
+      password: imapPass,
+      useSSL: true,
+      provider: emailDomain || 'custom'
+    });
+  }
+
+  /**
    * 创建注册配置
    * @param {Object} options - 选项
    * @returns {Promise<RegistrationConfig>} 注册配置
@@ -516,7 +545,14 @@ export class CLI {
   async createRegistrationConfig(options) {
     // 获取邮箱配置
     const configName = options.emailConfig || options.config || 'default';
-    const emailConfig = this.emailConfigManager.getConfig(configName);
+    
+    // 优先从环境变量读取配置（桌面应用传递）
+    let emailConfig = this.getEmailConfigFromEnv();
+    
+    // 如果环境变量没有配置，则从配置文件读取
+    if (!emailConfig) {
+      emailConfig = this.emailConfigManager.getConfig(configName);
+    }
     
     if (!emailConfig) {
       throw new Error(`邮箱配置不存在: ${configName}。请先使用 'config email' 命令配置邮箱`);
@@ -1186,6 +1222,48 @@ export class CLI {
   async confirm(prompt) {
     const answer = await this.question(prompt);
     return ['y', 'yes', '是', 'true', '1'].includes(answer.toLowerCase());
+  }
+
+  /**
+   * 进度更新回调
+   * @param {Object} progress - 进度信息
+   */
+  onProgressUpdate(progress) {
+    if (!progress) return;
+    
+    const { 
+      processedCount, 
+      totalCount, 
+      successCount, 
+      failureCount, 
+      currentEmail,
+      progressPercentage 
+    } = progress;
+    
+    // 清除当前行并显示进度
+    process.stdout.clearLine?.(0);
+    process.stdout.cursorTo?.(0);
+    
+    const progressBar = this.createProgressBar(progressPercentage || 0);
+    const status = `${progressBar} ${processedCount}/${totalCount} | ✅ ${successCount} ❌ ${failureCount}`;
+    
+    if (currentEmail) {
+      process.stdout.write(`${status} | 当前: ${currentEmail}`);
+    } else {
+      process.stdout.write(status);
+    }
+  }
+
+  /**
+   * 创建进度条
+   * @param {number} percentage - 百分比 (0-100)
+   * @returns {string} 进度条字符串
+   */
+  createProgressBar(percentage) {
+    const width = 20;
+    const filled = Math.round(width * percentage / 100);
+    const empty = width - filled;
+    return `[${'█'.repeat(filled)}${'░'.repeat(empty)}] ${percentage.toFixed(1)}%`;
   }
 
   /**

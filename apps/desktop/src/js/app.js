@@ -509,7 +509,8 @@ let registerState = {
     currentIndex: 0,
     successCount: 0,
     failedCount: 0,
-    selectedConfig: null  // 存储选中的邮箱配置
+    selectedConfig: null,  // 存储选中的邮箱配置
+    previewEmails: []      // 缓存预览邮箱，避免每次重新生成
 };
 
 // 生成随机用户名：8位字母 + 6位数字
@@ -539,30 +540,76 @@ function generateEmails(domain, count) {
     return emails;
 }
 
-// 更新邮箱预览
+// 更新数字按钮状态
+function updateNumberButtonState(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    
+    const wrapper = input.closest('.number-input-wrapper');
+    if (!wrapper) return;
+    
+    const minusBtn = wrapper.querySelector('.minus');
+    const plusBtn = wrapper.querySelector('.plus');
+    
+    const value = parseInt(input.value) || 1;
+    const min = parseInt(input.min) || 1;
+    const max = parseInt(input.max) || 100;
+    
+    if (minusBtn) {
+        minusBtn.disabled = value <= min;
+    }
+    if (plusBtn) {
+        plusBtn.disabled = value >= max;
+    }
+}
+
+// 更新邮箱预览（智能更新，不是每次都重新生成）
 function updateEmailPreview() {
-    const configSelect = document.getElementById('register-email-config');
+    const configId = document.getElementById('register-email-config').value;
     const countInput = document.getElementById('register-count');
     const previewEl = document.getElementById('email-preview');
     const domainHint = document.getElementById('domain-hint');
     
-    const configId = configSelect.value;
     const count = parseInt(countInput.value) || 1;
+    
+    // 更新数字按钮状态
+    updateNumberButtonState('register-count');
+    updateNumberButtonState('register-delay');
     
     if (!configId || !registerState.selectedConfig) {
         previewEl.innerHTML = '<span class="preview-placeholder">选择配置后显示预览</span>';
-        domainHint.textContent = '选择后将使用该域名生成邮箱';
+        domainHint.textContent = '选择邮箱配置后将使用该域名生成邮箱';
+        registerState.previewEmails = [];
         return;
     }
     
     const domain = registerState.selectedConfig.domain;
     domainHint.textContent = `将使用 @${domain} 域名`;
     
-    // 生成预览（最多显示5个）
-    const previewCount = Math.min(count, 5);
-    const previewEmails = generateEmails(domain, previewCount);
+    // 智能更新预览邮箱：
+    // - 如果数量增加，只添加新的邮箱
+    // - 如果数量减少，只移除多余的邮箱
+    // - 如果域名变化，重新生成所有邮箱
+    const currentDomain = registerState.previewEmails.length > 0 
+        ? registerState.previewEmails[0].split('@')[1] 
+        : null;
     
-    let html = previewEmails.map(email => 
+    if (currentDomain !== domain) {
+        // 域名变化，重新生成
+        registerState.previewEmails = generateEmails(domain, count);
+    } else if (count > registerState.previewEmails.length) {
+        // 数量增加，添加新邮箱
+        const additionalCount = count - registerState.previewEmails.length;
+        const newEmails = generateEmails(domain, additionalCount);
+        registerState.previewEmails = [...registerState.previewEmails, ...newEmails];
+    } else if (count < registerState.previewEmails.length) {
+        // 数量减少，移除多余邮箱
+        registerState.previewEmails = registerState.previewEmails.slice(0, count);
+    }
+    
+    // 显示预览（最多显示5个）
+    const previewCount = Math.min(count, 5);
+    let html = registerState.previewEmails.slice(0, previewCount).map(email => 
         `<div class="preview-email">${escapeHtml(email)}</div>`
     ).join('');
     
@@ -578,15 +625,24 @@ async function loadBatchRegisterPage() {
     try {
         // 加载邮箱配置到下拉框
         const configs = await invoke('get_email_configs');
-        const select = document.getElementById('register-email-config');
+        const optionsContainer = document.getElementById('dropdown-options');
         
-        select.innerHTML = '<option value="">请选择邮箱配置</option>';
-        configs.forEach(config => {
-            select.innerHTML += `<option value="${config.id}" data-domain="${config.domain}">${config.domain} (${config.username})</option>`;
-        });
+        if (configs.length === 0) {
+            optionsContainer.innerHTML = '<div class="dropdown-empty">暂无邮箱配置，请先添加</div>';
+        } else {
+            optionsContainer.innerHTML = configs.map(config => 
+                `<div class="dropdown-option" data-value="${config.id}" data-domain="${config.domain}">${config.domain} (${config.username})</div>`
+            ).join('');
+        }
         
         // 存储配置列表供后续使用
         registerState.configList = configs;
+        
+        // 重置选择状态
+        document.getElementById('register-email-config').value = '';
+        document.getElementById('dropdown-selected').querySelector('.dropdown-text').textContent = '请选择邮箱配置';
+        document.getElementById('dropdown-selected').querySelector('.dropdown-text').classList.add('placeholder');
+        registerState.selectedConfig = null;
         
         // 重置预览
         updateEmailPreview();
@@ -606,25 +662,74 @@ async function loadBatchRegisterPage() {
 
 // 初始化批量注册操作
 function initBatchRegisterActions() {
-    // 邮箱配置选择变化时更新预览
-    const configSelect = document.getElementById('register-email-config');
-    if (configSelect) {
-        configSelect.addEventListener('change', () => {
-            const configId = configSelect.value;
-            if (configId && registerState.configList) {
-                registerState.selectedConfig = registerState.configList.find(c => c.id === configId);
-            } else {
-                registerState.selectedConfig = null;
-            }
-            updateEmailPreview();
-        });
-    }
+    // 初始化自定义下拉组件 - 邮箱配置
+    initCustomDropdown('email-config-dropdown', (value, text) => {
+        document.getElementById('register-email-config').value = value;
+        if (value && registerState.configList) {
+            registerState.selectedConfig = registerState.configList.find(c => c.id === value);
+        } else {
+            registerState.selectedConfig = null;
+        }
+        // 域名变化时清空预览缓存
+        registerState.previewEmails = [];
+        updateEmailPreview();
+    });
+    
+    // 初始化自定义下拉组件 - 浏览器模式
+    initCustomDropdown('headless-dropdown', (value, text) => {
+        document.getElementById('register-headless').value = value;
+    });
     
     // 注册数量变化时更新预览
     const countInput = document.getElementById('register-count');
     if (countInput) {
-        countInput.addEventListener('input', updateEmailPreview);
+        countInput.addEventListener('input', () => {
+            // 确保值在有效范围内
+            let value = parseInt(countInput.value) || 1;
+            const min = parseInt(countInput.min) || 1;
+            const max = parseInt(countInput.max) || 100;
+            value = Math.max(min, Math.min(max, value));
+            countInput.value = value;
+            updateEmailPreview();
+        });
     }
+    
+    // 间隔变化时更新按钮状态
+    const delayInput = document.getElementById('register-delay');
+    if (delayInput) {
+        delayInput.addEventListener('input', () => {
+            updateNumberButtonState('register-delay');
+        });
+    }
+    
+    // 数字输入框加减按钮
+    document.querySelectorAll('.number-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (btn.disabled) return;
+            
+            const targetId = btn.dataset.target;
+            const input = document.getElementById(targetId);
+            if (!input) return;
+            
+            const min = parseInt(input.min) || 1;
+            const max = parseInt(input.max) || 100;
+            let value = parseInt(input.value) || min;
+            
+            if (btn.classList.contains('plus')) {
+                value = Math.min(value + 1, max);
+            } else {
+                value = Math.max(value - 1, min);
+            }
+            
+            input.value = value;
+            // 触发input事件以更新预览和按钮状态
+            input.dispatchEvent(new Event('input'));
+        });
+    });
+    
+    // 初始化按钮状态
+    updateNumberButtonState('register-count');
+    updateNumberButtonState('register-delay');
     
     // 开始注册按钮
     const startBtn = document.getElementById('start-register-btn');
@@ -649,6 +754,66 @@ function initBatchRegisterActions() {
     if (exportBtn) {
         exportBtn.addEventListener('click', exportRegisterResults);
     }
+}
+
+// 初始化自定义下拉组件
+function initCustomDropdown(dropdownId, onChange) {
+    const dropdown = document.getElementById(dropdownId);
+    if (!dropdown) return;
+    
+    const selected = dropdown.querySelector('.dropdown-selected');
+    const options = dropdown.querySelector('.dropdown-options');
+    const textEl = selected.querySelector('.dropdown-text');
+    
+    // 点击选择框切换下拉
+    selected.addEventListener('click', (e) => {
+        e.stopPropagation();
+        
+        // 关闭其他下拉
+        document.querySelectorAll('.custom-dropdown').forEach(d => {
+            if (d !== dropdown) {
+                d.querySelector('.dropdown-selected').classList.remove('active');
+                d.querySelector('.dropdown-options').classList.remove('show');
+            }
+        });
+        
+        selected.classList.toggle('active');
+        options.classList.toggle('show');
+    });
+    
+    // 点击选项
+    options.addEventListener('click', (e) => {
+        const option = e.target.closest('.dropdown-option');
+        if (!option) return;
+        
+        const value = option.dataset.value;
+        const text = option.textContent.replace(/^✓\s*/, '');
+        
+        // 更新选中状态
+        options.querySelectorAll('.dropdown-option').forEach(opt => {
+            opt.classList.remove('selected');
+        });
+        option.classList.add('selected');
+        
+        // 更新显示文本
+        textEl.textContent = text;
+        textEl.classList.remove('placeholder');
+        
+        // 关闭下拉
+        selected.classList.remove('active');
+        options.classList.remove('show');
+        
+        // 触发回调
+        if (onChange) {
+            onChange(value, text);
+        }
+    });
+    
+    // 点击外部关闭
+    document.addEventListener('click', () => {
+        selected.classList.remove('active');
+        options.classList.remove('show');
+    });
 }
 
 // 开始批量注册
@@ -676,9 +841,16 @@ async function startBatchRegister() {
         const delay = parseInt(document.getElementById('register-delay').value) || 5;
         const headless = document.getElementById('register-headless').value === 'true';
         
-        // 自动生成邮箱列表
+        // 使用预览中的邮箱列表（保持一致性）
+        // 如果预览邮箱数量不够，补充生成
         const domain = registerState.selectedConfig.domain;
-        const emails = generateEmails(domain, count);
+        let emails = [...registerState.previewEmails];
+        if (emails.length < count) {
+            const additionalEmails = generateEmails(domain, count - emails.length);
+            emails = [...emails, ...additionalEmails];
+        } else if (emails.length > count) {
+            emails = emails.slice(0, count);
+        }
         
         // 初始化状态
         registerState = {
@@ -745,18 +917,26 @@ async function startBatchRegister() {
                 
             } catch (err) {
                 registerState.failedCount++;
-                updateResultStatus(i, 'failed', err.toString());
-                registerState.results.push({ email, success: false, error: err.toString() });
+                const errorMsg = err.toString();
+                updateResultStatus(i, 'failed', errorMsg);
+                registerState.results.push({ email, success: false, error: errorMsg });
+                
+                // 记录错误到控制台
+                console.error('注册失败:', email, err);
             }
             
             // 更新进度
             updateProgress();
             
             // 添加日志
-            await invoke('add_log', {
-                level: registerState.results[i]?.success ? 'info' : 'error',
-                message: `注册 ${email}: ${registerState.results[i]?.success ? '成功' : '失败'}`
-            });
+            try {
+                await invoke('add_log', {
+                    level: registerState.results[i]?.success ? 'info' : 'error',
+                    message: `注册 ${email}: ${registerState.results[i]?.success ? '成功' : registerState.results[i]?.error || '失败'}`
+                });
+            } catch (logErr) {
+                console.error('添加日志失败:', logErr);
+            }
             
             // 延迟
             if (i < emails.length - 1 && registerState.isRunning) {
@@ -875,18 +1055,33 @@ function initResultsList(emails) {
 
 // 更新结果状态
 function updateResultStatus(index, status, message) {
+    const itemEl = document.getElementById(`result-${index}`);
     const statusEl = document.getElementById(`result-status-${index}`);
-    const msgEl = document.getElementById(`result-msg-${index}`);
     
     if (statusEl) {
         statusEl.className = `result-status ${status}`;
         statusEl.textContent = status === 'success' ? '成功' : 
                                status === 'failed' ? '失败' : 
                                status === 'processing' ? '处理中' : '待处理';
+        
+        // 如果有错误信息，添加title属性显示完整错误
+        if (message && status === 'failed') {
+            statusEl.title = message;
+        }
     }
     
-    if (msgEl && message) {
-        msgEl.textContent = message;
+    // 如果失败，在结果项中显示简短错误信息
+    if (itemEl && status === 'failed' && message) {
+        // 检查是否已有错误信息元素
+        let msgEl = itemEl.querySelector('.result-error');
+        if (!msgEl) {
+            msgEl = document.createElement('span');
+            msgEl.className = 'result-error';
+            itemEl.appendChild(msgEl);
+        }
+        // 截取错误信息前50个字符
+        const shortMsg = message.length > 50 ? message.substring(0, 50) + '...' : message;
+        msgEl.textContent = shortMsg;
         msgEl.title = message;
     }
 }
