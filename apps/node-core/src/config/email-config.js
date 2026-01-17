@@ -1,11 +1,15 @@
 /**
  * 邮箱配置管理系统
  * 提供邮箱服务器配置、IMAP设置和邮件提供商快速配置功能
+ * 支持从桌面应用的SQLite数据库读取配置
  */
 
 import fs from 'fs/promises';
+import { existsSync } from 'fs';
 import path from 'path';
 import { createLogger } from '../utils/logger.js';
+import sqlite3 from 'sqlite3';
+import { open } from 'sqlite';
 
 /**
  * 邮箱配置类
@@ -96,12 +100,96 @@ export class EmailConfigManager {
     this.options = {
       configDir: options.configDir || 'config',
       configFile: options.configFile || 'email-configs.json',
+      // SQLite数据库路径（桌面应用的数据库）
+      dbPath: options.dbPath || null,
       ...options
     };
 
     this.logger = createLogger({ component: 'EmailConfigManager' });
     this.configs = new Map();
     this.providers = this.initializeProviders();
+    this.db = null;  // SQLite数据库连接
+  }
+
+  /**
+   * 获取桌面应用数据库路径
+   * @returns {string|null} 数据库路径
+   */
+  getDesktopDbPath() {
+    // 尝试多种路径策略查找桌面应用的数据库
+    const cwd = process.cwd();
+    const possiblePaths = [
+      // 从 node-core 目录查找
+      path.join(cwd, '../desktop/.qoder-data/db/qoder.db'),
+      path.join(cwd, '../../apps/desktop/.qoder-data/db/qoder.db'),
+      // 从项目根目录查找
+      path.join(cwd, 'apps/desktop/.qoder-data/db/qoder.db'),
+      // 直接指定的路径
+      this.options.dbPath,
+    ].filter(Boolean);
+
+    for (const dbPath of possiblePaths) {
+      try {
+        if (existsSync(dbPath)) {
+          this.logger.debug('找到桌面应用数据库', { dbPath });
+          return dbPath;
+        }
+      } catch (e) {
+        // 忽略错误，继续尝试下一个路径
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * 从SQLite数据库加载配置
+   */
+  async loadConfigsFromDb() {
+    const dbPath = this.getDesktopDbPath();
+    if (!dbPath) {
+      this.logger.debug('未找到桌面应用数据库，将使用JSON配置文件');
+      return false;
+    }
+
+    try {
+      this.db = await open({
+        filename: dbPath,
+        driver: sqlite3.Database,
+        mode: sqlite3.OPEN_READONLY  // 只读模式
+      });
+
+      const rows = await this.db.all(
+        'SELECT id, domain, imap_host, imap_port, username, password, password_mode FROM email_configs'
+      );
+
+      this.configs.clear();
+      for (const row of rows) {
+        // 使用域名作为配置名称
+        const config = new EmailConfig({
+          imapServer: row.imap_host,
+          imapPort: row.imap_port,
+          username: row.username,
+          password: row.password,
+          useSSL: true,
+          provider: 'custom',
+          domain: row.domain
+        });
+        this.configs.set(row.domain, config);
+        // 同时用ID作为key，方便查找
+        this.configs.set(row.id, config);
+      }
+
+      this.logger.info('从SQLite数据库加载邮箱配置完成', {
+        dbPath,
+        configCount: rows.length
+      });
+
+      return true;
+    } catch (error) {
+      this.logger.error('从SQLite数据库加载配置失败', { error: error.message });
+      return false;
+    }
   }
 
   /**
@@ -220,16 +308,23 @@ export class EmailConfigManager {
    */
   async initialize() {
     try {
-      // 确保配置目录存在
-      await fs.mkdir(this.options.configDir, { recursive: true });
+      // 优先尝试从SQLite数据库加载配置（桌面应用的数据库）
+      const loadedFromDb = await this.loadConfigsFromDb();
       
-      // 加载现有配置
-      await this.loadConfigs();
+      if (!loadedFromDb) {
+        // 如果没有找到数据库，则使用JSON配置文件
+        // 确保配置目录存在
+        await fs.mkdir(this.options.configDir, { recursive: true });
+        
+        // 加载现有配置
+        await this.loadConfigs();
+      }
       
       this.logger.info('邮箱配置管理器初始化完成', {
         configDir: this.options.configDir,
         configCount: this.configs.size,
-        providerCount: this.providers.size
+        providerCount: this.providers.size,
+        source: loadedFromDb ? 'sqlite' : 'json'
       });
     } catch (error) {
       this.logger.error('邮箱配置管理器初始化失败', error);

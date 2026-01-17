@@ -2,8 +2,12 @@ use std::sync::Arc;
 
 pub mod commands;
 pub mod database;
+pub mod api_server;
 
 pub use database::Database;
+
+/// API 服务器端口
+pub const API_SERVER_PORT: u16 = 9527;
 
 /// 应用状态 - 使用SQLite数据库
 pub struct AppState {
@@ -49,17 +53,28 @@ impl AppState {
             .map_err(|e| format!("创建数据目录失败: {}", e))?;
         
         let db_path = database::get_db_path();
-        println!("数据目录结构:");
-        println!("  - 数据库: {:?}", db_path);
-        println!("  - 日志: {:?}", database::get_logs_dir());
-        println!("  - 配置: {:?}", database::get_config_dir());
-        println!("  - 缓存: {:?}", database::get_cache_dir());
+        println!("数据目录: {:?}", db_path);
         
         let db = Database::new(db_path)
             .map_err(|e| format!("初始化数据库失败: {}", e))?;
         
+        let db_arc = Arc::new(db);
+        
+        // 启动 API 服务器（在后台线程）
+        let db_for_api = db_arc.clone();
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Runtime::new().expect("创建 Tokio 运行时失败");
+            rt.block_on(async {
+                if let Err(e) = api_server::start_server(db_for_api, API_SERVER_PORT).await {
+                    eprintln!("API 服务器启动失败: {}", e);
+                }
+            });
+        });
+        
+        println!("🚀 API 服务器已启动在 http://127.0.0.1:{}", API_SERVER_PORT);
+        
         Ok(Self {
-            db: Arc::new(db),
+            db: db_arc,
         })
     }
 }

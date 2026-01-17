@@ -520,12 +520,21 @@ export class CLI {
     const imapPass = process.env.QODER_IMAP_PASS;
     const emailDomain = process.env.QODER_EMAIL_DOMAIN;
     
+    // 调试日志：显示环境变量状态
+    this.logger.debug('检查环境变量配置', { 
+      hasImapHost: !!imapHost, 
+      hasImapUser: !!imapUser, 
+      hasImapPass: !!imapPass,
+      emailDomain 
+    });
+    
     // 检查必要的环境变量是否存在
     if (!imapHost || !imapUser || !imapPass) {
+      this.logger.debug('环境变量配置不完整，将使用配置文件');
       return null;
     }
     
-    this.logger.debug('从环境变量读取邮箱配置', { imapHost, imapUser, emailDomain });
+    this.logger.info('从环境变量读取邮箱配置', { imapHost, imapUser, emailDomain });
     
     return new EmailConfig({
       imapServer: imapHost,

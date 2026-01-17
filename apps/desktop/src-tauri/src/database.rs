@@ -111,6 +111,26 @@ impl Database {
         Ok(())
     }
     
+    /// 根据ID获取账号
+    pub fn get_account_by_id(&self, id: &str) -> SqliteResult<Option<Account>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, email, username, status, created_at FROM accounts WHERE id = ?1"
+        )?;
+        
+        let account = stmt.query_row(params![id], |row| {
+            Ok(Account {
+                id: row.get(0)?,
+                email: row.get(1)?,
+                username: row.get(2)?,
+                status: row.get(3)?,
+                created_at: row.get(4)?,
+            })
+        }).optional()?;
+        
+        Ok(account)
+    }
+    
     /// 获取账号统计
     pub fn get_account_stats(&self) -> SqliteResult<(usize, usize, usize)> {
         let conn = self.conn.lock().unwrap();
@@ -271,21 +291,6 @@ pub fn get_db_path() -> PathBuf {
     get_data_dir().join("db").join("qoder.db")
 }
 
-/// 获取日志目录
-pub fn get_logs_dir() -> PathBuf {
-    get_data_dir().join("logs")
-}
-
-/// 获取配置目录
-pub fn get_config_dir() -> PathBuf {
-    get_data_dir().join("config")
-}
-
-/// 获取缓存目录
-pub fn get_cache_dir() -> PathBuf {
-    get_data_dir().join("cache")
-}
-
 /// 获取数据根目录
 fn get_data_dir() -> PathBuf {
     // 开发环境使用项目根目录下的 .qoder-data 目录（在src-tauri外面，避免触发重编译）
@@ -314,8 +319,5 @@ fn get_data_dir() -> PathBuf {
 /// 初始化所有数据目录
 pub fn init_data_dirs() -> std::io::Result<()> {
     std::fs::create_dir_all(get_db_path().parent().unwrap())?;
-    std::fs::create_dir_all(get_logs_dir())?;
-    std::fs::create_dir_all(get_config_dir())?;
-    std::fs::create_dir_all(get_cache_dir())?;
     Ok(())
 }
