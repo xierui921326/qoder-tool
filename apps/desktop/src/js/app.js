@@ -531,12 +531,32 @@ function generateRandomUsername() {
 }
 
 // 根据配置和数量生成邮箱列表
-function generateEmails(domain, count) {
+async function generateEmails(domain, count) {
+    // 获取已存在的邮箱列表
+    const existingAccounts = await invoke('get_accounts');
+    const existingEmails = new Set(existingAccounts.map(acc => acc.email));
+    
     const emails = [];
-    for (let i = 0; i < count; i++) {
+    let attempts = 0;
+    const maxAttempts = count * 10; // 最多尝试 10 倍数量
+    
+    while (emails.length < count && attempts < maxAttempts) {
         const username = generateRandomUsername();
-        emails.push(`${username}@${domain}`);
+        const email = `${username}@${domain}`;
+        
+        // 检查邮箱是否已存在
+        if (!existingEmails.has(email)) {
+            emails.push(email);
+            existingEmails.add(email); // 添加到集合中，避免本次生成重复
+        }
+        
+        attempts++;
     }
+    
+    if (emails.length < count) {
+        console.warn(`只生成了 ${emails.length} 个邮箱，目标是 ${count} 个`);
+    }
+    
     return emails;
 }
 
@@ -564,7 +584,7 @@ function updateNumberButtonState(inputId) {
 }
 
 // 更新邮箱预览（智能更新，不是每次都重新生成）
-function updateEmailPreview() {
+async function updateEmailPreview() {
     const configId = document.getElementById('register-email-config').value;
     const countInput = document.getElementById('register-count');
     const previewEl = document.getElementById('email-preview');
@@ -596,11 +616,11 @@ function updateEmailPreview() {
     
     if (currentDomain !== domain) {
         // 域名变化，重新生成
-        registerState.previewEmails = generateEmails(domain, count);
+        registerState.previewEmails = await generateEmails(domain, count);
     } else if (count > registerState.previewEmails.length) {
         // 数量增加，添加新邮箱
         const additionalCount = count - registerState.previewEmails.length;
-        const newEmails = generateEmails(domain, additionalCount);
+        const newEmails = await generateEmails(domain, additionalCount);
         registerState.previewEmails = [...registerState.previewEmails, ...newEmails];
     } else if (count < registerState.previewEmails.length) {
         // 数量减少，移除多余邮箱
@@ -846,7 +866,7 @@ async function startBatchRegister() {
         const domain = registerState.selectedConfig.domain;
         let emails = [...registerState.previewEmails];
         if (emails.length < count) {
-            const additionalEmails = generateEmails(domain, count - emails.length);
+            const additionalEmails = await generateEmails(domain, count - emails.length);
             emails = [...emails, ...additionalEmails];
         } else if (emails.length > count) {
             emails = emails.slice(0, count);
@@ -902,12 +922,6 @@ async function startBatchRegister() {
                 if (result.success) {
                     registerState.successCount++;
                     updateResultStatus(i, 'success', '注册成功');
-                    
-                    // 添加到账号列表
-                    await invoke('add_account', { 
-                        email: email, 
-                        username: result.username || email.split('@')[0]
-                    });
                 } else {
                     registerState.failedCount++;
                     updateResultStatus(i, 'failed', result.error || '注册失败');

@@ -78,7 +78,7 @@ export class Logger {
   debug(message, meta = {}) {
     if (this.level <= LogLevel.DEBUG) {
       const formatted = this.formatMessage('DEBUG', message, meta);
-      console.log(this.applyColors('DEBUG', formatted));
+      console.error(this.applyColors('DEBUG', formatted));
     }
   }
 
@@ -90,7 +90,7 @@ export class Logger {
   info(message, meta = {}) {
     if (this.level <= LogLevel.INFO) {
       const formatted = this.formatMessage('INFO', message, meta);
-      console.log(this.applyColors('INFO', formatted));
+      console.error(this.applyColors('INFO', formatted));
     }
   }
 

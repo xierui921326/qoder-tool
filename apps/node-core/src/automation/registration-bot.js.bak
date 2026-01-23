@@ -571,8 +571,7 @@ export class RegistrationBot {
       }
 
       // ========== 步骤 2：填写密码 ==========
-      this.logger.info('========== 步骤 2：填写密码（拟人化输入） ==========');
-      console.error('========== 步骤 2：填写密码 ==========');
+      this.logger.info('步骤 2：填写密码（拟人化输入）');
 
       // 等待密码字段出现
       const passwordSelectors = [
@@ -581,28 +580,21 @@ export class RegistrationBot {
         'input[type="password"]'
       ];
 
-      this.logger.info('开始查找密码字段');
-      console.error('开始查找密码字段');
-
       let passwordFilled = false;
       for (const selector of passwordSelectors) {
         try {
-          this.logger.info('尝试选择器', { selector });
           // 等待密码字段可见（缩短超时时间）
           await this.page.waitForSelector(selector, { state: 'visible', timeout: 5000 }).catch(() => {});
           
           const passwordField = await this.page.$(selector);
           if (passwordField && await passwordField.isVisible()) {
             this.logger.info('找到 Password 字段', { selector });
-            console.error(`找到 Password 字段: ${selector}`);
             await this.humanType(passwordField, password);
             passwordFilled = true;
             this.logger.info('Password 已填写');
-            console.error('Password 已填写');
             break;
           }
         } catch (error) {
-          this.logger.warn('选择器失败', { selector, error: error.message });
           continue;
         }
       }
@@ -610,15 +602,9 @@ export class RegistrationBot {
       if (!passwordFilled) {
         await this.takeScreenshot('password-not-found');
         this.logger.error('无法找到密码输入字段');
-        return false;
+        return false;  // 返回 false 而不是抛出异常
       }
 
-      this.logger.info('密码已填写，表单填写完成');
-      console.error('密码已填写，表单填写完成');
-      
-      // 等待页面稳定
-      await this.randomDelay(1000, 2000);
-      
       this.logger.info('注册表单填写完成', { firstName, lastName, email });
       return true;
 
@@ -1104,21 +1090,7 @@ export class RegistrationBot {
     }
 
     try {
-      this.logger.info('========== 开始提交注册表单 ==========');
-      console.error('========== 开始提交注册表单 ==========');
-      
-      // 检查是否已经离开注册页面（表单可能已经提交）
-      const currentUrl = this.page.url();
-      this.logger.info('当前页面 URL', { url: currentUrl });
-      console.error(`当前页面 URL: ${currentUrl}`);
-      
-      const stillOnRegisterPage = currentUrl.includes('sign-up') || currentUrl.includes('register');
-      if (!stillOnRegisterPage) {
-        this.logger.info('已离开注册页面，表单可能已提交，跳过 submitRegistration');
-        console.error('已离开注册页面，表单可能已提交');
-        // 直接检查注册结果
-        return await this.checkRegistrationResult();
-      }
+      this.logger.info('提交注册表单');
 
       // 在提交前，先检查是否有明显的表单错误
       const preSubmitError = await this.detectRegistrationErrors();
@@ -1128,64 +1100,33 @@ export class RegistrationBot {
         return `VALIDATION_ERROR: ${preSubmitError}`;
       }
 
-      // 查找提交按钮 - 使用更通用的方法
-      this.logger.info('开始查找提交按钮');
-      console.error('开始查找提交按钮');
-      
-      // 获取所有按钮
-      const allButtons = await this.page.$$('button');
-      this.logger.info('页面上所有按钮数量', { count: allButtons.length });
-      console.error(`页面上所有按钮数量: ${allButtons.length}`);
-      
+      // Qoder 注册页面专用选择器 - 按钮文本是 "Continue" 或 "Sign up"
+      const submitSelectors = [
+        'button:has-text("Sign up")',
+        'button:has-text("Sign Up")',
+        'button:has-text("Continue")',
+        'button:has-text("continue")',
+        'button[type="button"]:has-text("Continue")',
+        'button[type="submit"]',
+        'input[type="submit"]',
+        'button:has-text("Register")',
+        'button:has-text("注册")',
+        'button:has-text("Create account")',
+        'button:has-text("Create Account")',
+        '[data-testid="submit"]',
+        '.submit-btn',
+        '.register-btn',
+        '#submit'
+      ];
+
       let submitButton = null;
-      for (let i = 0; i < allButtons.length; i++) {
-        const btn = allButtons[i];
+      for (const selector of submitSelectors) {
         try {
-          const text = await btn.textContent();
-          const isVisible = await btn.isVisible();
-          const isEnabled = await btn.isEnabled();
-          
-          if (isVisible && isEnabled && text) {
-            const textTrimmed = text.trim();
-            const textNoSpace = text.replace(/\s+/g, '');
-            const textLower = text.toLowerCase().trim();
-            
-            this.logger.info('检查按钮', { index: i, text: textTrimmed });
-            console.error(`按钮 ${i}: "${textTrimmed}"`);
-            
-            // 匹配提交按钮（排除 Continue 按钮）
-            // 中文：注册、提交、创建账号
-            // 英文：Sign up、Register、Create account、Submit
-            const isSubmitButton = (
-              (textNoSpace === '注册' || textNoSpace.includes('注册')) ||
-              (textNoSpace === '提交' || textNoSpace.includes('提交')) ||
-              (textNoSpace === '创建账号' || textNoSpace.includes('创建账号')) ||
-              (textLower.includes('sign up') || textLower.includes('signup')) ||
-              (textLower === 'register' || textLower.includes('register')) ||
-              (textLower.includes('create account')) ||
-              (textLower === 'submit')
-            );
-            
-            // **关键**：排除 Continue 按钮
-            const isContinueButton = (
-              textNoSpace === '继续' || 
-              textNoSpace.includes('继续') ||
-              textLower.includes('continue') ||
-              textNoSpace === '下一步' ||
-              textNoSpace.includes('下一步')
-            );
-            
-            console.error(`  isSubmitButton: ${isSubmitButton}, isContinueButton: ${isContinueButton}`);
-            
-            if (isSubmitButton && !isContinueButton) {
-              submitButton = btn;
-              this.logger.info('找到提交按钮', { index: i, text: textTrimmed });
-              console.error(`✓ 找到提交按钮: "${textTrimmed}"`);
-              break;
-            } else if (isContinueButton) {
-              this.logger.info('跳过 Continue 按钮', { index: i, text: textTrimmed });
-              console.error(`✗ 跳过 Continue 按钮: "${textTrimmed}"`);
-            }
+          const btn = await this.page.$(selector);
+          if (btn && await btn.isVisible()) {
+            submitButton = btn;
+            this.logger.info('找到提交按钮', { selector });
+            break;
           }
         } catch (error) {
           continue;
@@ -1193,116 +1134,20 @@ export class RegistrationBot {
       }
 
       if (!submitButton) {
-        // 如果没找到提交按钮，检查是否有"继续"按钮
-        // 在中文环境下，可能需要再次点击"继续"才能看到"注册"按钮
-        this.logger.info('未找到提交按钮，检查是否有"继续"按钮');
-        console.error('未找到提交按钮，检查是否有"继续"按钮');
-        
-        let continueButton = null;
-        for (let i = 0; i < allButtons.length; i++) {
-          const btn = allButtons[i];
-          try {
-            const text = await btn.textContent();
-            const isVisible = await btn.isVisible();
-            const isEnabled = await btn.isEnabled();
-            
-            if (isVisible && isEnabled && text) {
-              const textNoSpace = text.replace(/\s+/g, '');
-              const textLower = text.toLowerCase().trim();
-              
-              const isContinueButton = (
-                textNoSpace === '继续' || 
-                textNoSpace.includes('继续') ||
-                textLower.includes('continue') ||
-                textNoSpace === '下一步' ||
-                textNoSpace.includes('下一步')
-              );
-              
-              if (isContinueButton) {
-                continueButton = btn;
-                this.logger.info('找到"继续"按钮', { index: i, text: text.trim() });
-                console.error(`找到"继续"按钮: "${text.trim()}"`);
-                break;
-              }
-            }
-          } catch (error) {
-            continue;
+        // 尝试使用 locator 查找包含 "Sign up" 或 "Continue" 文本的按钮
+        try {
+          const signupBtn = this.page.locator('button', { hasText: /Sign up|Continue/i });
+          if (await signupBtn.count() > 0) {
+            submitButton = await signupBtn.first().elementHandle();
+            this.logger.info('使用 locator 找到提交按钮');
           }
-        }
-        
-        if (continueButton) {
-          // 点击"继续"按钮
-          this.logger.info('点击"继续"按钮，等待"注册"按钮出现');
-          console.error('点击"继续"按钮，等待"注册"按钮出现');
-          await this.humanClick(continueButton);
-          await this.randomDelay(2000, 4000);
-          
-          // 再次查找提交按钮
-          this.logger.info('再次查找提交按钮');
-          console.error('再次查找提交按钮');
-          
-          const allButtonsAgain = await this.page.$$('button');
-          for (let i = 0; i < allButtonsAgain.length; i++) {
-            const btn = allButtonsAgain[i];
-            try {
-              const text = await btn.textContent();
-              const isVisible = await btn.isVisible();
-              const isEnabled = await btn.isEnabled();
-              
-              if (isVisible && isEnabled && text) {
-                const textNoSpace = text.replace(/\s+/g, '');
-                const textLower = text.toLowerCase().trim();
-                
-                const isSubmitButton = (
-                  (textNoSpace === '注册' || textNoSpace.includes('注册')) ||
-                  (textNoSpace === '提交' || textNoSpace.includes('提交')) ||
-                  (textNoSpace === '创建账号' || textNoSpace.includes('创建账号')) ||
-                  (textLower.includes('sign up') || textLower.includes('signup')) ||
-                  (textLower === 'register' || textLower.includes('register')) ||
-                  (textLower.includes('create account')) ||
-                  (textLower === 'submit')
-                );
-                
-                const isContinueButton = (
-                  textNoSpace === '继续' || 
-                  textNoSpace.includes('继续') ||
-                  textLower.includes('continue') ||
-                  textNoSpace === '下一步' ||
-                  textNoSpace.includes('下一步')
-                );
-                
-                if (isSubmitButton && !isContinueButton) {
-                  submitButton = btn;
-                  this.logger.info('第二次查找：找到提交按钮', { index: i, text: text.trim() });
-                  console.error(`第二次查找：找到提交按钮: "${text.trim()}"`);
-                  break;
-                }
-              }
-            } catch (error) {
-              continue;
-            }
-          }
-        }
-        
-        // 如果还是没找到，尝试查找 type="submit" 的按钮
-        if (!submitButton) {
-          try {
-            const submitTypeButtons = await this.page.$$('button[type="submit"]');
-            if (submitTypeButtons.length > 0) {
-              submitButton = submitTypeButtons[0];
-              this.logger.info('使用 type="submit" 找到提交按钮');
-              console.error('使用 type="submit" 找到提交按钮');
-            }
-          } catch (e) {
-            // 忽略
-          }
+        } catch (e) {
+          this.logger.warn('locator 查找按钮失败', { error: e.message });
         }
       }
 
       if (!submitButton) {
         await this.takeScreenshot('submit-button-not-found');
-        this.logger.error('无法找到提交按钮');
-        console.error('无法找到提交按钮');
         throw new Error('无法找到提交按钮');
       }
 

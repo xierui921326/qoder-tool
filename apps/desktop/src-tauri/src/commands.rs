@@ -370,20 +370,22 @@ fn execute_registration_v2(
             let stdout = String::from_utf8_lossy(&output.stdout);
             let stderr = String::from_utf8_lossy(&output.stderr);
             
-            // 尝试解析 JSON 结果
+            // 尝试解析 JSON 结果（优先）
             if let Ok(result) = serde_json::from_str::<RegisterResult>(&stdout) {
                 return result;
             }
             
-            // 检查是否成功
-            if output.status.success() || stdout.contains("成功") || stdout.contains("✅") {
+            // 如果无法解析 JSON，检查退出码
+            if output.status.success() {
+                // 退出码为 0，但无法解析 JSON，尝试从输出中提取信息
                 RegisterResult {
-                    success: true,
+                    success: false,
                     email: email.to_string(),
-                    username: Some(email.split('@').next().unwrap_or("user").to_string()),
-                    error: None,
+                    username: None,
+                    error: Some(format!("无法解析注册结果，输出: {}", stdout.lines().take(3).collect::<Vec<_>>().join(" "))),
                 }
             } else {
+                // 退出码非 0，注册失败
                 let error_msg = if !stderr.is_empty() && !stderr.trim().is_empty() {
                     format!("错误: {}", stderr.lines().take(3).collect::<Vec<_>>().join(" "))
                 } else if !stdout.is_empty() && !stdout.trim().is_empty() {

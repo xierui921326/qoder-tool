@@ -173,6 +173,23 @@ export class AccountManagerV2 {
     await this.apiClient.logInfo(`开始注册账号: ${email}`);
 
     try {
+      // 检查邮箱是否已存在
+      const existingAccounts = await this.apiClient.getAccounts();
+      const accountExists = existingAccounts.some(acc => acc.email === email);
+      
+      if (accountExists) {
+        logger.warn('邮箱已存在，跳过注册', { email });
+        await this.apiClient.logError(`注册 ${email}: 邮箱已存在于数据库`);
+        return new RegistrationResult(
+          email,
+          false,
+          null,
+          null,
+          '邮箱已存在',
+          false
+        );
+      }
+
       // 验证配置
       const validation = config.validate();
       if (!validation.isValid) {
@@ -184,13 +201,25 @@ export class AccountManagerV2 {
 
       // 如果注册成功，保存到数据库
       if (result.success) {
-        await this.apiClient.createAccount({
-          email,
-          username,
-          password,
-          status: 'active'
-        });
-        await this.apiClient.logInfo(`账号注册成功: ${email}`);
+        try {
+          await this.apiClient.createAccount({
+            email,
+            username: result.accountId,  // 使用实际的用户名（姓名）
+            password,
+            status: 'active'
+          });
+          await this.apiClient.logInfo(`账号注册成功: ${email}`);
+        } catch (dbError) {
+          // 如果是重复邮箱错误，记录警告但不影响注册结果
+          if (dbError.message && dbError.message.includes('UNIQUE constraint')) {
+            logger.warn('账号已存在于数据库，但注册成功', { email });
+            await this.apiClient.logError(`注册 ${email}: 添加账号失败: ${dbError.message}`);
+            // 不抛出异常，继续返回成功结果
+          } else {
+            // 其他数据库错误，抛出异常
+            throw dbError;
+          }
+        }
       } else {
         await this.apiClient.logError(`账号注册失败: ${email} - ${result.errorMessage}`);
       }
@@ -227,6 +256,11 @@ export class AccountManagerV2 {
       timeout: config.timeout
     });
 
+    // 生成或使用提供的姓名
+    const firstName = config.userProfile.firstName || this.generateRandomName().firstName;
+    const lastName = config.userProfile.lastName || this.generateRandomName().lastName;
+    const fullName = `${firstName} ${lastName}`;
+
     try {
       // 初始化浏览器
       const initialized = await bot.initialize();
@@ -254,9 +288,10 @@ export class AccountManagerV2 {
         );
       }
 
-      // 填写注册表单
-      const filled = await bot.fillRegistrationForm(email, password, config.userProfile);
+      // 填写注册表单（传入姓名）
+      const filled = await bot.fillRegistrationForm(email, password, { firstName, lastName });
       if (!filled) {
+        logger.error('填写注册表单失败', { email });
         return new RegistrationResult(
           email,
           false,
@@ -267,8 +302,11 @@ export class AccountManagerV2 {
         );
       }
 
+      logger.info('注册表单填写成功，准备提交', { email });
+
       // 提交注册
       const submitResult = await bot.submitRegistration();
+      logger.info('提交注册完成', { email, result: submitResult });
       
       // 检查提交结果
       if (submitResult.startsWith('ERROR') || submitResult.startsWith('VALIDATION_ERROR')) {
@@ -303,10 +341,11 @@ export class AccountManagerV2 {
         }
       }
 
+      // 返回成功结果，accountId 使用姓名
       return new RegistrationResult(
         email,
         true,
-        username,
+        fullName,  // 使用姓名而不是随机用户名
         password,
         null,
         verificationCompleted
@@ -315,6 +354,20 @@ export class AccountManagerV2 {
     } finally {
       await bot.cleanup();
     }
+  }
+
+  /**
+   * 生成随机名字
+   * @returns {Object} 包含 firstName 和 lastName
+   */
+  generateRandomName() {
+    const firstNames = ['Alex', 'Jordan', 'Taylor', 'Morgan', 'Casey', 'Riley', 'Quinn', 'Avery', 'Parker', 'Skyler'];
+    const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Wilson', 'Moore'];
+    
+    return {
+      firstName: firstNames[Math.floor(Math.random() * firstNames.length)],
+      lastName: lastNames[Math.floor(Math.random() * lastNames.length)]
+    };
   }
 
   /**
