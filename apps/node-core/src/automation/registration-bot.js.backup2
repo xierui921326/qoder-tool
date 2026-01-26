@@ -485,133 +485,11 @@ export class RegistrationBot {
       // 等待页面稳定
       await this.randomDelay(2000, 3000);
 
-      // 步骤3.1：查找并点击"点击开始验证"按钮
-      this.logger.info('步骤3.1：查找"点击开始验证"按钮');
-      console.error('步骤3.1：查找"点击开始验证"按钮');
+      // 查找"点击开始验证"按钮或验证框
+      this.logger.info('查找人机验证元素');
+      console.error('查找人机验证元素');
 
-      const startVerifyButtonSelectors = [
-        'button:has-text("点击开始验证")',
-        'button:has-text("点击")',
-        'button:has-text("开始验证")',
-        '.verify-button',
-        '[class*="verify"]',
-        'button[class*="verify"]'
-      ];
-
-      let startButtonClicked = false;
-      for (const selector of startVerifyButtonSelectors) {
-        try {
-          const button = await this.page.$(selector);
-          if (button && await button.isVisible()) {
-            this.logger.info('找到"点击开始验证"按钮', { selector });
-            console.error(`找到"点击开始验证"按钮: ${selector}`);
-            
-            await this.humanClick(button);
-            this.logger.info('已点击"点击开始验证"按钮');
-            console.error('已点击"点击开始验证"按钮');
-            
-            startButtonClicked = true;
-            await this.randomDelay(2000, 3000);
-            break;
-          }
-        } catch (error) {
-          continue;
-        }
-      }
-
-      if (!startButtonClicked) {
-        // 尝试通过文本内容查找
-        try {
-          const allButtons = await this.page.$$('button');
-          for (const btn of allButtons) {
-            const text = await btn.textContent();
-            if (text && (text.includes('点击') || text.includes('开始验证') || text.includes('验证'))) {
-              this.logger.info('通过文本找到验证按钮', { text: text.trim() });
-              console.error(`通过文本找到验证按钮: ${text.trim()}`);
-              await this.humanClick(btn);
-              startButtonClicked = true;
-              await this.randomDelay(2000, 3000);
-              break;
-            }
-          }
-        } catch (error) {
-          this.logger.warn('通过文本查找按钮失败', { error: error.message });
-        }
-      }
-
-      if (!startButtonClicked) {
-        this.logger.warn('未找到"点击开始验证"按钮，可能已经显示验证界面');
-        console.error('未找到"点击开始验证"按钮，可能已经显示验证界面');
-      }
-
-      // 步骤3.2：完成滑块验证
-      this.logger.info('步骤3.2：查找滑块验证');
-      console.error('步骤3.2：查找滑块验证');
-
-      // 等待滑块验证界面出现
-      await this.randomDelay(2000, 3000);
-
-      // 查找滑块元素
-      const sliderSelectors = [
-        '.slider-button',
-        '.slide-verify-slider',
-        '[class*="slider"]',
-        '[class*="slide"]',
-        'div[role="slider"]'
-      ];
-
-      let sliderFound = false;
-      let sliderElement = null;
-
-      for (const selector of sliderSelectors) {
-        try {
-          const element = await this.page.$(selector);
-          if (element && await element.isVisible()) {
-            sliderElement = element;
-            sliderFound = true;
-            this.logger.info('找到滑块元素', { selector });
-            console.error(`找到滑块元素: ${selector}`);
-            break;
-          }
-        } catch (error) {
-          continue;
-        }
-      }
-
-      if (sliderFound && sliderElement) {
-        // 执行滑块验证
-        this.logger.info('开始执行滑块验证');
-        console.error('开始执行滑块验证');
-
-        const sliderSuccess = await this.solveSliderCaptcha(sliderElement);
-        
-        if (sliderSuccess) {
-          this.logger.info('✓ 滑块验证完成');
-          console.error('✓ 滑块验证完成');
-          await this.randomDelay(2000, 3000);
-          
-          this.logger.info('步骤3完成：人机验证已通过');
-          console.error('步骤3完成：人机验证已通过');
-          return true;
-        } else {
-          this.logger.error('✗ 滑块验证失败');
-          console.error('✗ 滑块验证失败');
-          
-          if (!this.options.headless) {
-            this.logger.info('可见模式：请手动完成滑块验证，等待60秒...');
-            console.error('可见模式：请手动完成滑块验证，等待60秒...');
-            await this.page.waitForTimeout(60000);
-            return true;
-          }
-          
-          return false;
-        }
-      }
-
-      // 如果没有找到滑块，检查是否有 Cloudflare Turnstile
-      this.logger.info('未找到滑块验证，检查 Cloudflare Turnstile');
-      console.error('未找到滑块验证，检查 Cloudflare Turnstile');
-
+      // 检查是否有 Cloudflare Turnstile 验证
       const turnstileSelectors = [
         'iframe[src*="turnstile"]',
         '.cf-turnstile',
@@ -635,83 +513,47 @@ export class RegistrationBot {
       }
 
       if (turnstileFound) {
-        // Turnstile 验证逻辑（保持原有代码）
-        const waitTimeout = this.options.headless ? 30000 : 600000;
-        const checkInterval = 3000;
-        const startTime = Date.now();
+        // 等待 Turnstile 自动完成或用户手动完成
+        const waitTimeout = this.options.headless ? 30000 : 120000; // 可见模式等待2分钟
         
-        this.logger.info(`检测到人机验证，等待完成...`, { 
-          mode: this.options.headless ? '无头模式' : '可见模式',
-          timeout: `${waitTimeout / 1000}秒`
-        });
-        console.error(`========================================`);
-        console.error(`检测到 Cloudflare Turnstile 人机验证`);
-        console.error(`模式: ${this.options.headless ? '无头模式' : '可见模式'}`);
-        console.error(`超时时间: ${waitTimeout / 1000}秒`);
-        console.error(`请在浏览器中完成人机验证！`);
-        console.error(`========================================`);
-        
-        while (Date.now() - startTime < waitTimeout) {
-          try {
-            const isCompleted = await this.page.evaluate(() => {
-              const response = document.querySelector('[name="cf-turnstile-response"]');
-              return response && response.value && response.value.length > 0;
-            });
-            
-            if (isCompleted) {
-              this.logger.info('✓ Turnstile 验证已完成！');
-              console.error('✓ Turnstile 验证已完成！');
-              await this.randomDelay(2000, 3000);
-              
-              this.logger.info('步骤3完成：人机验证已通过');
-              console.error('步骤3完成：人机验证已通过');
-              return true;
-            }
-            
-            const elapsed = Math.floor((Date.now() - startTime) / 1000);
-            const remaining = Math.floor((waitTimeout - (Date.now() - startTime)) / 1000);
-            
-            if (elapsed % 10 === 0) {
-              this.logger.info(`等待人机验证... 已等待: ${elapsed}秒, 剩余: ${remaining}秒`);
-              console.error(`等待人机验证... 已等待: ${elapsed}秒, 剩余: ${remaining}秒`);
-            }
-            
-            await this.page.waitForTimeout(checkInterval);
-            
-          } catch (error) {
-            this.logger.warn('检查验证状态时出错', { error: error.message });
-          }
+        if (!this.options.headless) {
+          this.logger.info(`可见模式：请在浏览器中完成人机验证，等待 ${waitTimeout / 1000} 秒...`);
+          console.error(`可见模式：请在浏览器中完成人机验证，等待 ${waitTimeout / 1000} 秒...`);
         }
         
-        if (this.options.headless) {
-          this.logger.error('✗ 无头模式下 Turnstile 验证超时');
-          console.error('✗ 无头模式下 Turnstile 验证超时');
-          return false;
-        } else {
-          this.logger.warn('⚠ Turnstile 验证等待超时，再给30秒');
-          console.error('⚠ Turnstile 验证等待超时，再给30秒');
+        try {
+          // 等待 Turnstile 验证完成
+          await this.page.waitForFunction(() => {
+            const response = document.querySelector('[name="cf-turnstile-response"]');
+            return response && response.value && response.value.length > 0;
+          }, { timeout: waitTimeout });
           
-          try {
-            await this.page.waitForFunction(() => {
-              const response = document.querySelector('[name="cf-turnstile-response"]');
-              return response && response.value && response.value.length > 0;
-            }, { timeout: 30000 });
-            
-            this.logger.info('✓ Turnstile 验证已完成（延长时间内）');
-            console.error('✓ Turnstile 验证已完成（延长时间内）');
-            return true;
-          } catch (e) {
-            this.logger.error('✗ 验证仍未完成，继续执行但可能失败');
-            console.error('✗ 验证仍未完成，继续执行但可能失败');
+          this.logger.info('Turnstile 验证已完成');
+          console.error('Turnstile 验证已完成');
+          await this.randomDelay(1000, 2000);
+          
+          this.logger.info('步骤3完成：人机验证已通过');
+          console.error('步骤3完成：人机验证已通过');
+          return true;
+          
+        } catch (e) {
+          if (this.options.headless) {
+            this.logger.error('无头模式下 Turnstile 验证超时');
+            console.error('无头模式下 Turnstile 验证超时');
+            return false;
+          } else {
+            this.logger.warn('Turnstile 验证等待超时，但继续执行');
+            console.error('Turnstile 验证等待超时，但继续执行');
+            // 在可见模式下，即使超时也继续，可能用户已经完成了
             return true;
           }
         }
+      } else {
+        // 没有检测到验证码，可能已经跳过或不需要
+        this.logger.info('未检测到人机验证，可能已跳过');
+        console.error('未检测到人机验证，可能已跳过');
+        return true;
       }
-
-      // 没有检测到任何验证
-      this.logger.info('未检测到人机验证，可能已跳过');
-      console.error('未检测到人机验证，可能已跳过');
-      return true;
 
     } catch (error) {
       this.logger.error('步骤3失败', error);
@@ -721,135 +563,6 @@ export class RegistrationBot {
         await this.takeScreenshot('step3-error');
       }
       
-      if (!this.options.headless) {
-        this.logger.warn('可见模式下出错，但继续执行');
-        console.error('可见模式下出错，但继续执行');
-        return true;
-      }
-      
-      return false;
-    }
-  }
-
-  /**
-   * 解决滑块验证码
-   * @param {ElementHandle} sliderElement - 滑块元素
-   * @returns {Promise<boolean>} 是否成功
-   */
-  async solveSliderCaptcha(sliderElement) {
-    try {
-      this.logger.info('开始解决滑块验证码');
-      console.error('开始解决滑块验证码');
-
-      // 获取滑块的位置和大小
-      const sliderBox = await sliderElement.boundingBox();
-      if (!sliderBox) {
-        this.logger.error('无法获取滑块位置');
-        console.error('无法获取滑块位置');
-        return false;
-      }
-
-      this.logger.info('滑块位置', { 
-        x: sliderBox.x, 
-        y: sliderBox.y, 
-        width: sliderBox.width, 
-        height: sliderBox.height 
-      });
-      console.error(`滑块位置: x=${sliderBox.x}, y=${sliderBox.y}, width=${sliderBox.width}, height=${sliderBox.height}`);
-
-      // 获取滑块轨道的宽度（通常是父元素或容器）
-      const trackWidth = await this.page.evaluate(() => {
-        // 尝试查找滑块轨道
-        const track = document.querySelector('.slider-track, .slide-verify-slider-track, [class*="track"]');
-        if (track) {
-          return track.offsetWidth;
-        }
-        // 如果找不到，使用默认值
-        return 300;
-      });
-
-      this.logger.info('滑块轨道宽度', { trackWidth });
-      console.error(`滑块轨道宽度: ${trackWidth}`);
-
-      // 计算需要滑动的距离（通常是轨道宽度减去滑块宽度）
-      const slideDistance = trackWidth - sliderBox.width - 10; // 减去10像素作为缓冲
-
-      this.logger.info('计算滑动距离', { slideDistance });
-      console.error(`计算滑动距离: ${slideDistance}px`);
-
-      // 模拟人类滑动：分多段滑动，带随机停顿
-      const startX = sliderBox.x + sliderBox.width / 2;
-      const startY = sliderBox.y + sliderBox.height / 2;
-
-      // 移动鼠标到滑块中心
-      await this.page.mouse.move(startX, startY, { steps: 10 });
-      await this.randomDelay(200, 400);
-
-      // 按下鼠标
-      await this.page.mouse.down();
-      await this.randomDelay(100, 200);
-
-      // 分段滑动（模拟人类不均匀的滑动）
-      const segments = 5; // 分5段滑动
-      const segmentDistance = slideDistance / segments;
-
-      for (let i = 1; i <= segments; i++) {
-        const targetX = startX + (segmentDistance * i);
-        const steps = Math.floor(Math.random() * 5) + 5; // 5-10步
-        
-        // 添加一些随机的Y轴偏移，模拟人类不完美的滑动
-        const yOffset = (Math.random() - 0.5) * 3;
-        const targetY = startY + yOffset;
-        
-        await this.page.mouse.move(targetX, targetY, { steps });
-        
-        // 随机停顿
-        if (i < segments) {
-          await this.randomDelay(50, 150);
-        }
-      }
-
-      // 最后微调（模拟人类的精确调整）
-      const finalX = startX + slideDistance;
-      await this.page.mouse.move(finalX, startY, { steps: 3 });
-      await this.randomDelay(100, 200);
-
-      // 释放鼠标
-      await this.page.mouse.up();
-      await this.randomDelay(500, 1000);
-
-      this.logger.info('滑块滑动完成，等待验证结果');
-      console.error('滑块滑动完成，等待验证结果');
-
-      // 等待验证结果（检查是否有成功提示或验证框消失）
-      await this.randomDelay(2000, 3000);
-
-      // 检查验证是否成功
-      const verifySuccess = await this.page.evaluate(() => {
-        // 检查验证成功的标志
-        const successIndicators = [
-          document.querySelector('.verify-success'),
-          document.querySelector('[class*="success"]'),
-          !document.querySelector('.slider-button'), // 滑块消失
-          !document.querySelector('.slide-verify') // 验证框消失
-        ];
-        return successIndicators.some(indicator => indicator);
-      });
-
-      if (verifySuccess) {
-        this.logger.info('✓ 滑块验证成功');
-        console.error('✓ 滑块验证成功');
-        return true;
-      } else {
-        this.logger.warn('滑块验证可能失败，但继续执行');
-        console.error('滑块验证可能失败，但继续执行');
-        // 即使检测不到成功标志，也返回 true，让流程继续
-        return true;
-      }
-
-    } catch (error) {
-      this.logger.error('解决滑块验证码失败', error);
-      console.error('解决滑块验证码失败:', error.message);
       return false;
     }
   }

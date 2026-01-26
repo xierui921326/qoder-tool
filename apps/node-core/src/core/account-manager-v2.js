@@ -288,57 +288,74 @@ export class AccountManagerV2 {
         );
       }
 
-      // 填写注册表单（传入姓名）
-      const filled = await bot.fillRegistrationForm(email, password, { firstName, lastName });
-      if (!filled) {
-        logger.error('填写注册表单失败', { email });
+      // 步骤1：填写基本信息（姓名、邮箱、勾选协议、点击继续）
+      logger.info('步骤1：填写基本信息');
+      const step1Success = await bot.fillBasicInfo(email, { firstName, lastName });
+      if (!step1Success) {
+        logger.error('步骤1失败：填写基本信息失败', { email });
         return new RegistrationResult(
           email,
           false,
           null,
           password,
-          '填写注册表单失败',
+          '步骤1失败：填写基本信息失败',
           false
         );
       }
 
-      logger.info('注册表单填写成功，准备提交', { email });
-
-      // 提交注册
-      const submitResult = await bot.submitRegistration();
-      logger.info('提交注册完成', { email, result: submitResult });
-      
-      // 检查提交结果
-      if (submitResult.startsWith('ERROR') || submitResult.startsWith('VALIDATION_ERROR')) {
+      // 步骤2：填写密码并点击继续
+      logger.info('步骤2：填写密码');
+      const step2Success = await bot.fillPassword(password);
+      if (!step2Success) {
+        logger.error('步骤2失败：填写密码失败', { email });
         return new RegistrationResult(
           email,
           false,
           null,
           password,
-          submitResult,
+          '步骤2失败：填写密码失败',
           false
         );
       }
 
-      // 等待邮件验证（如果需要）
+      // 步骤3：完成人机验证
+      logger.info('步骤3：完成人机验证');
+      const step3Success = await bot.completeCaptcha();
+      if (!step3Success) {
+        logger.error('步骤3失败：人机验证失败', { email });
+        return new RegistrationResult(
+          email,
+          false,
+          null,
+          password,
+          '步骤3失败：人机验证失败',
+          false
+        );
+      }
+
+      // 步骤4：填写邮箱验证码（如果需要）
       let verificationCompleted = false;
-      if (submitResult === 'SUCCESS_PENDING_VERIFICATION' && config.emailConfig) {
+      if (config.emailConfig) {
+        logger.info('步骤4：填写邮箱验证码');
         try {
           const imapClient = createImapClient(config.emailConfig);
-          const verificationResult = await this.waitForVerificationEmail(
+          const step4Success = await bot.fillVerificationCode(
             imapClient,
             email,
-            config.emailVerificationTimeout
+            config.emailVerificationTimeout || 300000
           );
-
-          if (verificationResult.success && verificationResult.verificationUrl) {
-            // 访问验证链接
-            await bot.page.goto(verificationResult.verificationUrl, { waitUntil: 'networkidle' });
+          
+          if (step4Success) {
             verificationCompleted = true;
+            logger.info('步骤4完成：邮箱验证成功', { email });
+          } else {
+            logger.warn('步骤4失败：邮箱验证失败，但继续执行', { email });
           }
         } catch (verifyError) {
-          logger.warn('邮件验证失败', { error: verifyError.message });
+          logger.warn('步骤4异常：邮箱验证异常', { error: verifyError.message });
         }
+      } else {
+        logger.info('跳过步骤4：未配置邮箱');
       }
 
       // 返回成功结果，accountId 使用姓名
